@@ -1,0 +1,12 @@
+{
+  "test": {
+    "domain": "",
+    "expires": 0,
+    "httpOnly": false,
+    "name": "test",
+    "path": "",
+    "sameSite": "",
+    "secure": false,
+    "value": "value"
+  }
+}

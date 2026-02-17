@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ErrorHandler 错误处理�?
 type ErrorHandler struct {
 	mu           sync.RWMutex
 	errorCounts  map[string]int
@@ -24,7 +24,6 @@ type ErrorHandler struct {
 	windowPeriod time.Duration
 }
 
-// NewErrorHandler 创建错误处理�?
 func NewErrorHandler(maxErrors int, windowPeriod time.Duration) *ErrorHandler {
 	return &ErrorHandler{
 		errorCounts:  make(map[string]int),
@@ -34,7 +33,6 @@ func NewErrorHandler(maxErrors int, windowPeriod time.Duration) *ErrorHandler {
 	}
 }
 
-// RecordError 记录错误
 func (h *ErrorHandler) RecordError(err error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -42,7 +40,6 @@ func (h *ErrorHandler) RecordError(err error) {
 	errKey := err.Error()
 	now := time.Now()
 
-	// 清理过期错误
 	for key, lastTime := range h.lastErrors {
 		if now.Sub(lastTime) > h.windowPeriod {
 			delete(h.errorCounts, key)
@@ -53,31 +50,27 @@ func (h *ErrorHandler) RecordError(err error) {
 	h.errorCounts[errKey]++
 	h.lastErrors[errKey] = now
 
-	// 检查是否达到阈�?
 	if h.errorCounts[errKey] >= h.maxErrors {
 		logrus.Errorf("Error threshold reached: %s (count: %d)", errKey, h.errorCounts[errKey])
 	}
 }
 
-// IsCircuitOpen 检查熔断器是否打开
 func (h *ErrorHandler) IsCircuitOpen(err error) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
 	errKey := err.Error()
 	count := h.errorCounts[errKey]
-	
+
 	return count >= h.maxErrors
 }
 
-// RecoveryMiddleware 恢复中间�?
 func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				stack := debug.Stack()
-				logrus.Errorf("Panic recovered: %v
-Stack: %s", recovered, string(stack))
+				logrus.Errorf("Panic recovered: %v\nStack: %s", recovered, string(stack))
 
 				err := fmt.Errorf("internal server error: %v", recovered)
 				jsonError(w, "INTERNAL_ERROR", err.Error(), http.StatusInternalServerError)
@@ -88,7 +81,6 @@ Stack: %s", recovered, string(stack))
 	})
 }
 
-// TimeoutMiddleware 超时中间�?
 func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +106,6 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	}
 }
 
-// RateLimitMiddleware 限流中间�?
 type RateLimiter struct {
 	mu       sync.RWMutex
 	requests map[string][]time.Time
@@ -137,7 +128,6 @@ func (rl *RateLimiter) Allow(ip string) bool {
 	now := time.Now()
 	windowStart := now.Add(-rl.window)
 
-	// 清理过期请求
 	var validRequests []time.Time
 	for _, reqTime := range rl.requests[ip] {
 		if reqTime.After(windowStart) {
@@ -171,7 +161,6 @@ func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 	}
 }
 
-// GracefulShutdown 优雅关闭
 func GracefulShutdown(server *http.Server, shutdownTimeout time.Duration) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -189,7 +178,6 @@ func GracefulShutdown(server *http.Server, shutdownTimeout time.Duration) {
 	logrus.Info("Server stopped")
 }
 
-// Retry 重试机制
 func Retry(ctx context.Context, maxRetries int, delay time.Duration, fn func() error) error {
 	var lastErr error
 
@@ -198,7 +186,6 @@ func Retry(ctx context.Context, maxRetries int, delay time.Duration, fn func() e
 			lastErr = err
 			logrus.Warnf("Retry %d/%d failed: %v", i+1, maxRetries, err)
 
-			// 检查上下文是否已取�?
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -213,14 +200,11 @@ func Retry(ctx context.Context, maxRetries int, delay time.Duration, fn func() e
 	return errors.Wrap(lastErr, "max retries exceeded")
 }
 
-// getIPAddress 获取客户端IP地址
 func getIPAddress(r *http.Request) string {
-	// 尝试�?X-Forwarded-For 获取
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		return xff
 	}
 
-	// 尝试�?X-Real-IP 获取
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return xri
 	}
@@ -228,7 +212,6 @@ func getIPAddress(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-// jsonError 辅助函数
 func jsonError(w http.ResponseWriter, code string, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

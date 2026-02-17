@@ -1,4 +1,3 @@
-// Package main 提供统一的发布服务入口
 package main
 
 import (
@@ -22,6 +21,7 @@ import (
 	"publisher-core/storage"
 	"publisher-core/task"
 	"publisher-core/task/handlers"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,43 +36,32 @@ var (
 )
 
 func init() {
-	flag.IntVar(&port, "port", 8080, "API服务端口")
-	flag.BoolVar(&headless, "headless", true, "浏览器无头模式")
-	flag.StringVar(&cookieDir, "cookie-dir", "./cookies", "Cookie存储目录")
-	flag.StringVar(&storageDir, "storage-dir", "./uploads", "文件存储目录")
-	flag.StringVar(&dataDir, "data-dir", "./data", "数据存储目录")
-	flag.StringVar(&baseURL, "base-url", "", "文件访问基础URL")
-	flag.BoolVar(&debug, "debug", false, "调试模式")
+	flag.IntVar(&port, "port", 8080, "API server port")
+	flag.BoolVar(&headless, "headless", true, "Browser headless mode")
+	flag.StringVar(&cookieDir, "cookie-dir", "./cookies", "Cookie storage directory")
+	flag.StringVar(&storageDir, "storage-dir", "./uploads", "File storage directory")
+	flag.StringVar(&dataDir, "data-dir", "./data", "Data storage directory")
+	flag.StringVar(&baseURL, "base-url", "", "File access base URL")
+	flag.BoolVar(&debug, "debug", false, "Debug mode")
 }
 
 func main() {
 	flag.Parse()
 
-	// 配置日志
 	setupLogger()
 
-	// 创建存储
 	store, err := storage.NewLocalStorage(storageDir, baseURL)
 	if err != nil {
-		logrus.Fatalf("创建存储失败: %v", err)
+		logrus.Fatalf("Failed to create storage: %v", err)
 	}
 
-	// 创建任务管理器
 	taskMgr := task.NewTaskManager(task.NewMemoryStorage())
 
-	// 创建发布器工厂
 	factory := adapters.DefaultFactory()
 
-	// 注册任务处理器
 	publishHandler := handlers.NewPublishHandler(factory)
 	taskMgr.RegisterHandler("publish", publishHandler.Handle)
 
-	// 创建API服务
-	server := api.NewServer()
-	server.WithMiddleware(api.LoggingMiddleware)
-	server.WithMiddleware(api.CORSMiddleware)
-
-	// 创建服务实现
 	publisherService := &PublisherService{
 		factory: factory,
 		taskMgr: taskMgr,
@@ -84,86 +73,62 @@ func main() {
 		taskMgr: taskMgr,
 	}
 
-	server.WithPublisher(publisherService)
-	server.WithStorage(storageService)
-	server.WithTaskManager(taskService)
-
-	// 创建 AI 服务
 	aiService := ai.NewServiceWithDefaults()
-	// 注册 AI 提供商(需要配置API Key)
-	// aiService.RegisterProvider(provider.NewOpenRouterProvider("your-api-key"))
-	// aiService.RegisterProvider(provider.NewDeepSeekProvider("your-api-key"))
-
-	// 创建 AI 服务适配器
 	aiAdapter := &AIServiceAdapter{service: aiService}
-	server.WithAI(aiAdapter)
 
-	// 创建热点服务
+	server := api.NewServer(taskService, publisherService, storageService, aiAdapter)
+
 	hotspotStorage, err := hotspot.NewJSONStorage(dataDir)
 	if err != nil {
-		logrus.Fatalf("创建热点存储失败: %v", err)
+		logrus.Fatalf("Failed to create hotspot storage: %v", err)
 	}
 	hotspotService := hotspot.NewService(hotspotStorage)
 
-	// 注册真实数据源
 	for _, src := range sources.CreateAllSources() {
 		hotspotService.RegisterSource(src)
 	}
 
-	// 注册模拟数据源(用于测试)
-	hotspotService.RegisterSource(sources.NewMockSource("mock", "测试数据源"))
+	hotspotService.RegisterSource(sources.NewMockSource("mock", "Test Source"))
 
-	// 注册热点 API 路由
-	hotspotAPI := hotspot.NewAPIHandler(hotspotService)
-	hotspotAPI.RegisterRoutes(server.Router())
-
-	// 创建分析服务
 	analyticsStorage, err := analytics.NewJSONStorage(dataDir + "/analytics")
 	if err != nil {
-		logrus.Warnf("创建分析存储失败: %v", err)
+		logrus.Warnf("Failed to create analytics storage: %v", err)
 	}
 	analyticsService := analytics.NewService(analyticsStorage)
 
-	// 注册数据采集器
 	analyticsService.RegisterCollector(collectors.NewDouyinCollector())
 	analyticsService.RegisterCollector(collectors.NewXiaohongshuCollector())
 	analyticsService.RegisterCollector(collectors.NewToutiaoCollector())
 
-	// 注册分析 API 路由
-	analyticsAPI := analytics.NewAPIHandler(analyticsService)
-	analyticsAPI.RegisterRoutes(server.Router())
-
-	// 启动服务
 	go func() {
 		addr := fmt.Sprintf(":%d", port)
 		if err := server.Start(addr); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("启动服务器失败 %v", err)
+			logrus.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
-	logrus.Info("发布服务已启动")
-	logrus.Infof("API地址: http://localhost:%d", port)
-	logrus.Infof("支持平台: %v", factory.SupportedPlatforms())
-	logrus.Info("热点服务已启动")
+	logrus.Info("Publisher service started")
+	logrus.Infof("API address: http://localhost:%d", port)
+	logrus.Infof("Supported platforms: %v", factory.Platforms())
+	logrus.Info("Hotspot service started")
 
-	// 等待退出信号
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logrus.Info("正在关闭服务...")
+	logrus.Info("Shutting down service...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(); err != nil {
-		logrus.Errorf("关闭服务器失败 %v", err)
+	if err := server.Stop(ctx); err != nil {
+		logrus.Errorf("Failed to shutdown server: %v", err)
 	}
 
 	select {
 	case <-ctx.Done():
-		logrus.Warn("服务关闭超时")
+		logrus.Warn("Service shutdown timeout")
 	default:
-		logrus.Info("服务已关闭")
+		logrus.Info("Service stopped")
 	}
 }
 
@@ -179,30 +144,29 @@ func setupLogger() {
 	}
 }
 
-// PublisherService 发布器服务实现
 type PublisherService struct {
 	factory *adapters.PublisherFactory
 	taskMgr *task.TaskManager
 }
 
 func (s *PublisherService) GetPlatforms() []string {
-	return s.factory.SupportedPlatforms()
+	return s.factory.Platforms()
 }
 
 func (s *PublisherService) GetPlatformInfo(platform string) (interface{}, error) {
-	pub, err := s.factory.Create(platform)
+	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]interface{}{
 		"platform": pub.Platform(),
-		"message":  fmt.Sprintf("平台 %s 已就绪", platform),
+		"message":  fmt.Sprintf("Platform %s is ready", platform),
 	}, nil
 }
 
 func (s *PublisherService) Login(platform string) (interface{}, error) {
-	pub, err := s.factory.Create(platform)
+	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +180,7 @@ func (s *PublisherService) Login(platform string) (interface{}, error) {
 }
 
 func (s *PublisherService) CheckLogin(platform string) (interface{}, error) {
-	pub, err := s.factory.Create(platform)
+	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +197,7 @@ func (s *PublisherService) CheckLogin(platform string) (interface{}, error) {
 }
 
 func (s *PublisherService) Logout(platform string) (interface{}, error) {
-	pub, err := s.factory.Create(platform)
+	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -245,11 +209,10 @@ func (s *PublisherService) Logout(platform string) (interface{}, error) {
 
 	return map[string]interface{}{
 		"platform": platform,
-		"message":  "登出成功",
+		"message":  "Logout success",
 	}, nil
 }
 
-// StorageService 存储服务实现
 type StorageService struct {
 	storage storage.Storage
 }
@@ -273,7 +236,6 @@ func (s *StorageService) Delete(path string) error {
 	return s.storage.Delete(context.Background(), path)
 }
 
-// TaskService 任务服务实现
 type TaskService struct {
 	taskMgr *task.TaskManager
 }
@@ -311,7 +273,6 @@ func (s *TaskService) CancelTask(taskID string) error {
 	return s.taskMgr.Cancel(taskID)
 }
 
-// AIServiceAdapter AI 服务适配器
 type AIServiceAdapter struct {
 	service *ai.Service
 }
@@ -338,4 +299,37 @@ func (a *AIServiceAdapter) ListProviders() []string {
 
 func (a *AIServiceAdapter) ListModels() map[string][]string {
 	return a.service.ListModels()
+}
+
+func (a *AIServiceAdapter) GenerateContent(prompt string, options map[string]interface{}) (interface{}, error) {
+	opts := &provider.GenerateOptions{
+		Messages: []provider.Message{
+			{Role: provider.RoleUser, Content: prompt},
+		},
+	}
+	return a.service.Generate(context.Background(), opts)
+}
+
+func (a *AIServiceAdapter) OptimizeTitle(title string, platform string) (string, error) {
+	opts := &provider.GenerateOptions{
+		Messages: []provider.Message{
+			{Role: provider.RoleSystem, Content: "You are a title optimization expert."},
+			{Role: provider.RoleUser, Content: fmt.Sprintf("Optimize this title for %s platform: %s", platform, title)},
+		},
+	}
+	result, err := a.service.Generate(context.Background(), opts)
+	if err != nil {
+		return title, err
+	}
+	return result.Content, nil
+}
+
+func (a *AIServiceAdapter) AnalyzeContent(content string) (interface{}, error) {
+	opts := &provider.GenerateOptions{
+		Messages: []provider.Message{
+			{Role: provider.RoleSystem, Content: "You are a content analysis expert."},
+			{Role: provider.RoleUser, Content: fmt.Sprintf("Analyze this content: %s", content)},
+		},
+	}
+	return a.service.Generate(context.Background(), opts)
 }

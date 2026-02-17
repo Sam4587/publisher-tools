@@ -182,15 +182,6 @@ func (h *APIHandler) ExportReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if format == "markdown" || format == "md" {
-		md := generator.ExportMarkdown(report)
-		w.Header().Set("Content-Type", "text/markdown")
-		w.Header().Set("Content-Disposition", "attachment; filename=report.md")
-		w.Write([]byte(md))
-		return
-	}
-
-	// 默认JSON格式
 	json, err := generator.ExportJSON(report)
 	if err != nil {
 		h.jsonError(w, err.Error(), http.StatusInternalServerError)

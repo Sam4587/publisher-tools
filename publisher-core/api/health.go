@@ -9,17 +9,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// HealthStatus 健康状�?
 type HealthStatus struct {
-	Status      string            `json:"status"` // healthy, unhealthy, degraded
-	Timestamp   time.Time         `json:"timestamp"`
-	Version     string            `json:"version"`
-	Uptime      int64             `json:"uptime_seconds"`
-	Services    map[string]ServiceHealth `json:"services"`
-	System      SystemHealth      `json:"system"`
+	Status    string            `json:"status"`
+	Timestamp time.Time         `json:"timestamp"`
+	Version   string            `json:"version"`
+	Uptime    int64             `json:"uptime_seconds"`
+	Services  map[string]ServiceHealth `json:"services"`
+	System    SystemHealth      `json:"system"`
 }
 
-// ServiceHealth 服务健康状�?
 type ServiceHealth struct {
 	Status    string    `json:"status"`
 	Message   string    `json:"message,omitempty"`
@@ -27,7 +25,6 @@ type ServiceHealth struct {
 	LastCheck time.Time `json:"last_check"`
 }
 
-// SystemHealth 系统健康状�?
 type SystemHealth struct {
 	GoVersion    string `json:"go_version"`
 	NumGoroutine int    `json:"num_goroutine"`
@@ -37,17 +34,14 @@ type SystemHealth struct {
 	MemSysMB     uint64 `json:"mem_sys_mb"`
 }
 
-// HealthChecker 健康检查器
 type HealthChecker struct {
 	startTime time.Time
 	version   string
 	checks    map[string]HealthCheck
 }
 
-// HealthCheck 健康检查函�?
 type HealthCheck func() ServiceHealth
 
-// NewHealthChecker 创建健康检查器
 func NewHealthChecker(version string) *HealthChecker {
 	return &HealthChecker{
 		startTime: time.Now(),
@@ -56,18 +50,15 @@ func NewHealthChecker(version string) *HealthChecker {
 	}
 }
 
-// RegisterCheck 注册健康检�?
 func (h *HealthChecker) RegisterCheck(name string, check HealthCheck) {
 	h.checks[name] = check
 	logrus.Infof("Health check registered: %s", name)
 }
 
-// Check 执行健康检�?
 func (h *HealthChecker) Check() HealthStatus {
 	overallStatus := "healthy"
 	services := make(map[string]ServiceHealth)
 
-	// 执行所有健康检�?
 	for name, check := range h.checks {
 		serviceHealth := check()
 		services[name] = serviceHealth
@@ -79,7 +70,6 @@ func (h *HealthChecker) Check() HealthStatus {
 		}
 	}
 
-	// 获取系统信息
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
@@ -102,7 +92,6 @@ func (h *HealthChecker) Check() HealthStatus {
 	}
 }
 
-// HealthHandler 健康检查处理器
 func (s *Server) healthCheckHandler(checker *HealthChecker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := checker.Check()
@@ -110,8 +99,6 @@ func (s *Server) healthCheckHandler(checker *HealthChecker) http.HandlerFunc {
 		statusCode := http.StatusOK
 		if status.Status == "unhealthy" {
 			statusCode = http.StatusServiceUnavailable
-		} else if status.Status == "degraded" {
-			statusCode = http.StatusOK // degraded仍然返回200，但标记状�?
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -120,13 +107,11 @@ func (s *Server) healthCheckHandler(checker *HealthChecker) http.HandlerFunc {
 	}
 }
 
-// LivenessProbe 存活探针
 func (s *Server) livenessProbe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
-// ReadinessProbe 就绪探针
 func (s *Server) readinessProbe(checker *HealthChecker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := checker.Check()

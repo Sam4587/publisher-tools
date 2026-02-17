@@ -1,4 +1,3 @@
-// Package storage 提供统一的文件存储抽象层
 package storage
 
 import (
@@ -18,40 +17,19 @@ import (
 	"time"
 )
 
-// Storage 文件存储接口
 type Storage interface {
-	// Write 写入文件
 	Write(ctx context.Context, path string, data []byte) error
-
-	// WriteStream 流式写入
 	WriteStream(ctx context.Context, path string, reader io.Reader) error
-
-	// Read 读取文件
 	Read(ctx context.Context, path string) ([]byte, error)
-
-	// ReadStream 流式读取
 	ReadStream(ctx context.Context, path string) (io.ReadCloser, error)
-
-	// Delete 删除文件
 	Delete(ctx context.Context, path string) error
-
-	// Exists 检查文件是否存�?
 	Exists(ctx context.Context, path string) (bool, error)
-
-	// Stat 获取文件信息
 	Stat(ctx context.Context, path string) (*FileInfo, error)
-
-	// List 列出文件
 	List(ctx context.Context, prefix string) ([]string, error)
-
-	// GetURL 获取访问URL
 	GetURL(ctx context.Context, path string) (string, error)
-
-	// GetSignedURL 获取带签名的访问URL(用于云存�?
 	GetSignedURL(ctx context.Context, path string, expiry time.Duration) (string, error)
 }
 
-// FileInfo 文件信息
 type FileInfo struct {
 	Path      string
 	Size      int64
@@ -61,44 +39,39 @@ type FileInfo struct {
 	UpdatedAt time.Time
 }
 
-// StorageType 存储类型
 type StorageType string
 
 const (
 	StorageTypeLocal StorageType = "local"
 	StorageTypeS3    StorageType = "s3"
-	StorageTypeOSS   StorageType = "oss"  // 阿里云OSS
-	StorageTypeCOS   StorageType = "cos"  // 腾讯云COS
+	StorageTypeOSS   StorageType = "oss"
+	StorageTypeCOS   StorageType = "cos"
 )
 
-// Config 存储配置
 type Config struct {
 	Type      StorageType
-	RootDir   string // 本地存储根目�?
-	Bucket    string // 云存储桶�?
-	Region    string // 云存储区�?
-	Endpoint  string // 云存储端�?
-	AccessKey string // 访问密钥
-	SecretKey string // 密钥
-	BaseURL   string // 基础URL
+	RootDir   string
+	Bucket    string
+	Region    string
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	BaseURL   string
 }
 
-// LocalStorage 本地文件存储
 type LocalStorage struct {
 	rootDir string
 	baseURL string
 	mu      sync.RWMutex
 }
 
-// NewLocalStorage 创建本地存储
 func NewLocalStorage(rootDir string, baseURL string) (*LocalStorage, error) {
 	if rootDir == "" {
 		rootDir = "./uploads"
 	}
 
-	// 确保目录存在
 	if err := os.MkdirAll(rootDir, 0755); err != nil {
-		return nil, fmt.Errorf("创建存储目录失败: %w", err)
+		return nil, fmt.Errorf("failed to create storage directory: %w", err)
 	}
 
 	return &LocalStorage{
@@ -107,80 +80,67 @@ func NewLocalStorage(rootDir string, baseURL string) (*LocalStorage, error) {
 	}, nil
 }
 
-// normalizePath 规范化路�?
 func (s *LocalStorage) normalizePath(path string) string {
-	// 移除前导斜杠
 	path = strings.TrimPrefix(path, "/")
-	// 替换路径分隔�?
 	return filepath.FromSlash(path)
 }
 
-// resolvePath 解析安全路径
 func (s *LocalStorage) resolvePath(path string) (string, error) {
 	normalized := s.normalizePath(path)
 	absPath := filepath.Join(s.rootDir, normalized)
 
-	// 安全检查：确保路径在根目录�?
 	relPath, err := filepath.Rel(s.rootDir, absPath)
 	if err != nil {
-		return "", fmt.Errorf("无效路径: %w", err)
+		return "", fmt.Errorf("invalid path: %w", err)
 	}
 
 	if strings.HasPrefix(relPath, "..") {
-		return "", errors.New("路径超出存储根目�?)
+		return "", errors.New("path outside storage root")
 	}
 
 	return absPath, nil
 }
 
-// Write 写入文件
 func (s *LocalStorage) Write(ctx context.Context, path string, data []byte) error {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
 		return err
 	}
 
-	// 创建父目�?
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
-		return fmt.Errorf("创建目录失败: %w", err)
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// 写入文件
 	if err := os.WriteFile(absPath, data, 0644); err != nil {
-		return fmt.Errorf("写入文件失败: %w", err)
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	return nil
 }
 
-// WriteStream 流式写入
 func (s *LocalStorage) WriteStream(ctx context.Context, path string, reader io.Reader) error {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
 		return err
 	}
 
-	// 创建父目�?
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
-		return fmt.Errorf("创建目录失败: %w", err)
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// 创建文件
 	file, err := os.Create(absPath)
 	if err != nil {
-		return fmt.Errorf("创建文件失败: %w", err)
+		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer file.Close()
 
-	// 复制数据
 	if _, err := io.Copy(file, reader); err != nil {
-		return fmt.Errorf("写入数据失败: %w", err)
+		return fmt.Errorf("failed to write data: %w", err)
 	}
 
 	return nil
 }
 
-// Read 读取文件
 func (s *LocalStorage) Read(ctx context.Context, path string) ([]byte, error) {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
@@ -189,13 +149,12 @@ func (s *LocalStorage) Read(ctx context.Context, path string) ([]byte, error) {
 
 	data, err := os.ReadFile(absPath)
 	if err != nil {
-		return nil, fmt.Errorf("读取文件失败: %w", err)
+		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	return data, nil
 }
 
-// ReadStream 流式读取
 func (s *LocalStorage) ReadStream(ctx context.Context, path string) (io.ReadCloser, error) {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
@@ -204,13 +163,12 @@ func (s *LocalStorage) ReadStream(ctx context.Context, path string) (io.ReadClos
 
 	file, err := os.Open(absPath)
 	if err != nil {
-		return nil, fmt.Errorf("打开文件失败: %w", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 
 	return file, nil
 }
 
-// Delete 删除文件
 func (s *LocalStorage) Delete(ctx context.Context, path string) error {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
@@ -218,13 +176,12 @@ func (s *LocalStorage) Delete(ctx context.Context, path string) error {
 	}
 
 	if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("删除文件失败: %w", err)
+		return fmt.Errorf("failed to delete file: %w", err)
 	}
 
 	return nil
 }
 
-// Exists 检查文件是否存�?
 func (s *LocalStorage) Exists(ctx context.Context, path string) (bool, error) {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
@@ -242,7 +199,6 @@ func (s *LocalStorage) Exists(ctx context.Context, path string) (bool, error) {
 	return true, nil
 }
 
-// Stat 获取文件信息
 func (s *LocalStorage) Stat(ctx context.Context, path string) (*FileInfo, error) {
 	absPath, err := s.resolvePath(path)
 	if err != nil {
@@ -251,10 +207,9 @@ func (s *LocalStorage) Stat(ctx context.Context, path string) (*FileInfo, error)
 
 	stat, err := os.Stat(absPath)
 	if err != nil {
-		return nil, fmt.Errorf("获取文件信息失败: %w", err)
+		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
 
-	// 计算哈希
 	data, err := os.ReadFile(absPath)
 	if err != nil {
 		return nil, err
@@ -270,7 +225,6 @@ func (s *LocalStorage) Stat(ctx context.Context, path string) (*FileInfo, error)
 	}, nil
 }
 
-// List 列出文件
 func (s *LocalStorage) List(ctx context.Context, prefix string) ([]string, error) {
 	absPath, err := s.resolvePath(prefix)
 	if err != nil {
@@ -292,7 +246,6 @@ func (s *LocalStorage) List(ctx context.Context, prefix string) ([]string, error
 	return files, err
 }
 
-// GetURL 获取访问URL
 func (s *LocalStorage) GetURL(ctx context.Context, path string) (string, error) {
 	normalized := s.normalizePath(path)
 	if s.baseURL != "" {
@@ -301,20 +254,16 @@ func (s *LocalStorage) GetURL(ctx context.Context, path string) (string, error) 
 	return fmt.Sprintf("file://%s", filepath.Join(s.rootDir, normalized)), nil
 }
 
-// GetSignedURL 本地存储不支持签名URL
 func (s *LocalStorage) GetSignedURL(ctx context.Context, path string, expiry time.Duration) (string, error) {
 	return s.GetURL(ctx, path)
 }
 
-// detectMimeType 检测MIME类型
 func detectMimeType(path string, data []byte) string {
-	// 先通过内容检�?
 	mimeType := http.DetectContentType(data)
 	if mimeType != "application/octet-stream" {
 		return mimeType
 	}
 
-	// 再通过扩展名检�?
 	ext := filepath.Ext(path)
 	if ext != "" {
 		mimeType = mime.TypeByExtension(ext)
@@ -326,9 +275,6 @@ func detectMimeType(path string, data []byte) string {
 	return "application/octet-stream"
 }
 
-// ImageHelpers 图片辅助方法
-
-// ImageToBase64 将图片转换为Base64
 func ImageToBase64(storage Storage, ctx context.Context, path string) (string, error) {
 	data, err := storage.Read(ctx, path)
 	if err != nil {
@@ -343,15 +289,12 @@ func ImageToBase64(storage Storage, ctx context.Context, path string) (string, e
 	return fmt.Sprintf("data:%s;base64,%s", info.MimeType, encodeBase64(data)), nil
 }
 
-// Base64ToImage 将Base64转换为图片并保存
 func Base64ToImage(storage Storage, ctx context.Context, path string, base64Data string) error {
-	// 解析Base64数据
 	var data []byte
 	if strings.HasPrefix(base64Data, "data:") {
-		// 移除data:image/xxx;base64,前缀
 		idx := strings.Index(base64Data, ",")
 		if idx == -1 {
-			return errors.New("无效的Base64数据")
+			return errors.New("invalid Base64 data")
 		}
 		data = decodeBase64(base64Data[idx+1:])
 	} else {
@@ -361,27 +304,25 @@ func Base64ToImage(storage Storage, ctx context.Context, path string, base64Data
 	return storage.Write(ctx, path, data)
 }
 
-// DownloadFile 从URL下载文件
 func DownloadFile(storage Storage, ctx context.Context, path string, url string) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("下载失败: %w", err)
+		return fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("下载失败: HTTP %d", resp.StatusCode)
+		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
 	}
 
 	return storage.WriteStream(ctx, path, resp.Body)
 }
 
-// Copy 复制文件
 func Copy(storage Storage, ctx context.Context, src, dst string) error {
 	data, err := storage.Read(ctx, src)
 	if err != nil {
@@ -390,7 +331,6 @@ func Copy(storage Storage, ctx context.Context, src, dst string) error {
 	return storage.Write(ctx, dst, data)
 }
 
-// Move 移动文件
 func Move(storage Storage, ctx context.Context, src, dst string) error {
 	if err := Copy(storage, ctx, src, dst); err != nil {
 		return err
@@ -407,13 +347,11 @@ func decodeBase64(s string) []byte {
 	return data
 }
 
-// BufferStorage 内存缓冲存储(用于测试)
 type BufferStorage struct {
 	mu    sync.RWMutex
 	files map[string]*bytes.Buffer
 }
 
-// NewBufferStorage 创建内存存储
 func NewBufferStorage() *BufferStorage {
 	return &BufferStorage{
 		files: make(map[string]*bytes.Buffer),

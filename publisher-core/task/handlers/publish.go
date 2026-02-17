@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"publisher-core/adapters"
-	"publisher-core/interfaces/publisher"
+	publisher "publisher-core/interfaces"
 	"publisher-core/task"
 	"github.com/sirupsen/logrus"
 )
@@ -19,15 +19,13 @@ func NewPublishHandler(factory *adapters.PublisherFactory) *PublishHandler {
 }
 
 func (h *PublishHandler) Handle(ctx context.Context, t *task.Task) error {
-	logrus.Infof("开始执行发布任�? %s, 平台: %s", t.ID, t.Platform)
+	logrus.Infof("Starting publish task: %s, platform: %s", t.ID, t.Platform)
 
-	// 提取平台信息
 	platform, ok := t.Payload["platform"].(string)
 	if !ok {
 		return fmt.Errorf("invalid platform in payload")
 	}
 
-	// 提取内容信息
 	title, _ := t.Payload["title"].(string)
 	content, _ := t.Payload["content"].(string)
 	contentType, _ := t.Payload["type"].(string)
@@ -52,17 +50,15 @@ func (h *PublishHandler) Handle(ctx context.Context, t *task.Task) error {
 		}
 	}
 
-	logrus.Infof("发布内容: platform=%s, type=%s, title=%s, content_len=%d, images=%d, video=%s, tags=%d",
+	logrus.Infof("Publish content: platform=%s, type=%s, title=%s, content_len=%d, images=%d, video=%s, tags=%d",
 		platform, contentType, title, len(content), len(images), video, len(tags))
 
-	// 创建发布�?
-	pub, err := h.factory.Create(platform)
+	pub, err := h.factory.Create(platform, publisher.DefaultOptions())
 	if err != nil {
-		logrus.Errorf("创建发布器失�? %v", err)
-		return fmt.Errorf("创建发布器失�? %w", err)
+		logrus.Errorf("Create publisher failed: %v", err)
+		return fmt.Errorf("create publisher failed: %w", err)
 	}
 
-	// 构造发布内�?
 	publishContent := &publisher.Content{
 		Type:       publisher.ContentType(contentType),
 		Title:      title,
@@ -72,10 +68,9 @@ func (h *PublishHandler) Handle(ctx context.Context, t *task.Task) error {
 		Tags:       tags,
 	}
 
-	// 执行发布
 	result, err := pub.Publish(ctx, publishContent)
 	if err != nil {
-		logrus.Errorf("发布失败: %v", err)
+		logrus.Errorf("Publish failed: %v", err)
 		t.Result = map[string]interface{}{
 			"platform": platform,
 			"title":    title,
@@ -85,7 +80,6 @@ func (h *PublishHandler) Handle(ctx context.Context, t *task.Task) error {
 		return err
 	}
 
-	// 更新任务结果
 	t.Result = map[string]interface{}{
 		"platform":   platform,
 		"title":      title,
@@ -101,6 +95,6 @@ func (h *PublishHandler) Handle(ctx context.Context, t *task.Task) error {
 		t.Result["finished_at"] = result.FinishedAt
 	}
 
-	logrus.Infof("发布任务完成: %s, 状�? %s", t.ID, result.Status)
+	logrus.Infof("Publish task completed: %s, status: %s", t.ID, result.Status)
 	return nil
 }

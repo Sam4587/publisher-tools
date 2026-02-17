@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Browser 浏览器实例管�?
+// Browser 浏览器实例管理
 type Browser struct {
 	instance *rod.Browser
 	headless bool
@@ -26,7 +26,7 @@ var (
 	browserOnce    sync.Once
 )
 
-// Config 浏览器配�?
+// Config 浏览器配置
 type Config struct {
 	Headless  bool
 	Proxy     string
@@ -42,7 +42,7 @@ func DefaultConfig() *Config {
 	}
 }
 
-// NewBrowser 创建浏览器实�?
+// NewBrowser 创建浏览器实例
 func NewBrowser(cfg *Config) *Browser {
 	if cfg == nil {
 		cfg = DefaultConfig()
@@ -58,7 +58,7 @@ func NewBrowser(cfg *Config) *Browser {
 	return b
 }
 
-// DefaultBrowser 获取默认浏览器实例（单例�?
+// DefaultBrowser 获取默认浏览器实例（单例）
 func DefaultBrowser() *Browser {
 	browserOnce.Do(func() {
 		defaultBrowser = NewBrowser(DefaultConfig())
@@ -68,10 +68,10 @@ func DefaultBrowser() *Browser {
 
 func (b *Browser) init(cfg *Config) {
 	b.once.Do(func() {
-		// 使用 rod 直接连接浏览�?
+		// 使用 rod 直接连接浏览器
 		browser := rod.New()
 		if !cfg.Headless {
-			// 非无头模�?
+			// 非无头模式
 			browser = browser.NoDefaultDevice()
 		}
 		b.instance = browser.MustConnect()
@@ -79,18 +79,18 @@ func (b *Browser) init(cfg *Config) {
 	})
 }
 
-// MustPage 创建新页�?
+// MustPage 创建新页面
 func (b *Browser) MustPage() *rod.Page {
 	return b.instance.MustPage()
 }
 
-// NewPage 创建新页面（带上下文�?
+// NewPage 创建新页面（带上下文）
 func (b *Browser) NewPage(ctx context.Context) (*rod.Page, error) {
 	page := b.instance.MustPage()
 	return page.Context(ctx), nil
 }
 
-// Close 关闭浏览�?
+// Close 关闭浏览器
 func (b *Browser) Close() error {
 	if b.instance != nil {
 		return b.instance.Close()
@@ -103,14 +103,14 @@ type PageHelper struct {
 	page *rod.Page
 }
 
-// NewPageHelper 创建页面辅助�?
+// NewPageHelper 创建页面辅助器
 func NewPageHelper(page *rod.Page) *PageHelper {
 	return &PageHelper{page: page}
 }
 
-// Navigate 导航到URL并等待加�?
+// Navigate 导航到URL并等待加载
 func (h *PageHelper) Navigate(url string) error {
-	logrus.Debugf("导航�? %s", url)
+	logrus.Debugf("导航到 %s", url)
 	if err := h.page.Navigate(url); err != nil {
 		return fmt.Errorf("导航失败: %w", err)
 	}
@@ -132,7 +132,7 @@ func (h *PageHelper) WaitElement(selector string, timeout time.Duration) (*rod.E
 		return nil, fmt.Errorf("查找元素失败: %w", err)
 	}
 	if !has {
-		return nil, fmt.Errorf("元素未找�? %s", selector)
+		return nil, fmt.Errorf("元素未找到: %s", selector)
 	}
 	return elem, nil
 }
@@ -180,13 +180,13 @@ func (h *PageHelper) UploadFiles(selector string, filePaths []string) error {
 	return elem.SetFiles(filePaths)
 }
 
-// HasElement 检查元素是否存�?
+// HasElement 检查元素是否存在
 func (h *PageHelper) HasElement(selector string) (bool, error) {
 	has, _, err := h.page.Has(selector)
 	return has, err
 }
 
-// GetAttribute 获取元素属�?
+// GetAttribute 获取元素属性
 func (h *PageHelper) GetAttribute(selector, attr string) (string, error) {
 	elem, err := h.WaitElement(selector, 10*time.Second)
 	if err != nil {
@@ -244,7 +244,7 @@ func (h *PageHelper) Page() *rod.Page {
 	return h.page
 }
 
-// AntiCrawlerStrategies 反爬虫策�?
+// AntiCrawlerStrategies 反爬虫策略
 type AntiCrawlerStrategies struct{}
 
 // RandomDelay 全局随机延迟
@@ -264,7 +264,7 @@ func SimulateHumanInput(page *rod.Page, selector, text string) error {
 	elem.SelectAllText()
 	elem.Input("")
 
-	// 逐字输入，模拟打�?
+	// 逐字输入，模拟打字
 	for i, char := range text {
 		if i > 0 && i%5 == 0 {
 			RandomDelay(0.05, 0.15)
@@ -290,7 +290,7 @@ func ScrollPage(page *rod.Page, distance int) error {
 	return err
 }
 
-// ScrollToBottom 滚动到页面底�?
+// ScrollToBottom 滚动到页面底部
 func ScrollToBottom(page *rod.Page) error {
 	_, err := page.Eval("window.scrollTo(0, document.body.scrollHeight)")
 	return err

@@ -11,41 +11,37 @@ import (
 	"github.com/google/uuid"
 )
 
-// ContentTemplate 内容模板
 type ContentTemplate struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Platform    string                 `json:"platform"`
-	Category    string                 `json:"category"` // 新闻、教程、生活、娱乐等
-	Template    string                 `json:"template"`
-	Variables   []TemplateVariable     `json:"variables"`
-	Examples    []string               `json:"examples"`
-	Tags        []string               `json:"tags"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-	UsageCount  int                    `json:"usage_count"`
-	Rating      float64                `json:"rating"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Platform    string             `json:"platform"`
+	Category    string             `json:"category"`
+	Template    string             `json:"template"`
+	Variables   []TemplateVariable `json:"variables"`
+	Examples    []string           `json:"examples"`
+	Tags        []string           `json:"tags"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
+	UsageCount  int                `json:"usage_count"`
+	Rating      float64            `json:"rating"`
 }
 
-// TemplateVariable 模板变量
 type TemplateVariable struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"type"` // text, number, select, multiselect
-	Required    bool   `json:"required"`
-	Default     string `json:"default"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required"`
+	Default     string   `json:"default"`
 	Options     []string `json:"options,omitempty"`
 }
 
-// TemplateManager 模板管理�?
 type TemplateManager struct {
 	mu        sync.RWMutex
 	templates map[string]*ContentTemplate
 	storage   TemplateStorage
 }
 
-// TemplateStorage 模板存储接口
 type TemplateStorage interface {
 	Save(template *ContentTemplate) error
 	Load(id string) (*ContentTemplate, error)
@@ -53,7 +49,6 @@ type TemplateStorage interface {
 	Delete(id string) error
 }
 
-// TemplateFilter 模板过滤�?
 type TemplateFilter struct {
 	Platform string
 	Category string
@@ -61,7 +56,6 @@ type TemplateFilter struct {
 	Limit    int
 }
 
-// NewTemplateManager 创建模板管理�?
 func NewTemplateManager(storage TemplateStorage) *TemplateManager {
 	tm := &TemplateManager{
 		templates: make(map[string]*ContentTemplate),
@@ -71,111 +65,78 @@ func NewTemplateManager(storage TemplateStorage) *TemplateManager {
 	return tm
 }
 
-// loadDefaults 加载默认模板
 func (tm *TemplateManager) loadDefaults() {
 	defaults := []*ContentTemplate{
 		{
 			ID:          "news-hotspot",
-			Name:        "热点新闻评论",
-			Description: "针对热点事件生成评论性内�?,
+			Name:        "Hotspot News Commentary",
+			Description: "Generate commentary content for hotspot events",
 			Platform:    "all",
-			Category:    "新闻",
-			Template:    "【{title}】{event}
-
-{comment}
-
-#热点解读 #{tags}",
+			Category:    "news",
+			Template:    "[{title}] {event}\n\n{comment}\n\n#hotspot #{tags}",
 			Variables: []TemplateVariable{
-				{Name: "title", Description: "标题", Type: "text", Required: true},
-				{Name: "event", Description: "事件描述", Type: "text", Required: true},
-				{Name: "comment", Description: "评论内容", Type: "text", Required: true},
-				{Name: "tags", Description: "话题标签", Type: "text", Required: false},
+				{Name: "title", Description: "Title", Type: "text", Required: true},
+				{Name: "event", Description: "Event description", Type: "text", Required: true},
+				{Name: "comment", Description: "Comment content", Type: "text", Required: true},
+				{Name: "tags", Description: "Topic tags", Type: "text", Required: false},
 			},
-			Tags:      []string{"热点", "新闻", "评论"},
+			Tags:      []string{"hotspot", "news", "commentary"},
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		{
 			ID:          "tutorial-guide",
-			Name:        "教程指南",
-			Description: "生成教程类内�?,
+			Name:        "Tutorial Guide",
+			Description: "Generate tutorial content",
 			Platform:    "xiaohongshu",
-			Category:    "教程",
-			Template:    "【{title}�?
-
-�?{intro}
-
-📝 {steps}
-
-💡 {tips}
-
-#{tags}",
+			Category:    "tutorial",
+			Template:    "[{title}]\n\n{intro}\n\nSteps: {steps}\n\nTips: {tips}\n\n#{tags}",
 			Variables: []TemplateVariable{
-				{Name: "title", Description: "教程标题", Type: "text", Required: true},
-				{Name: "intro", Description: "简�?, Type: "text", Required: true},
-				{Name: "steps", Description: "步骤说明", Type: "text", Required: true},
-				{Name: "tips", Description: "小贴�?, Type: "text", Required: false},
-				{Name: "tags", Description: "话题标签", Type: "text", Required: false},
+				{Name: "title", Description: "Tutorial title", Type: "text", Required: true},
+				{Name: "intro", Description: "Introduction", Type: "text", Required: true},
+				{Name: "steps", Description: "Step instructions", Type: "text", Required: true},
+				{Name: "tips", Description: "Tips", Type: "text", Required: false},
+				{Name: "tags", Description: "Topic tags", Type: "text", Required: false},
 			},
-			Tags:      []string{"教程", "指南", "干货"},
+			Tags:      []string{"tutorial", "guide", "tips"},
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		{
 			ID:          "lifestyle-share",
-			Name:        "生活分享",
-			Description: "生活类内容分享模�?,
+			Name:        "Lifestyle Sharing",
+			Description: "Lifestyle content sharing template",
 			Platform:    "xiaohongshu",
-			Category:    "生活",
-			Template:    "【{title}�?
-
-{content}
-
-💭 {thoughts}
-
-📍 {location}
-
-#{tags}",
+			Category:    "lifestyle",
+			Template:    "[{title}]\n\n{content}\n\nThoughts: {thoughts}\n\nLocation: {location}\n\n#{tags}",
 			Variables: []TemplateVariable{
-				{Name: "title", Description: "标题", Type: "text", Required: true},
-				{Name: "content", Description: "内容", Type: "text", Required: true},
-				{Name: "thoughts", Description: "感悟", Type: "text", Required: false},
-				{Name: "location", Description: "地点", Type: "text", Required: false},
-				{Name: "tags", Description: "话题标签", Type: "text", Required: false},
+				{Name: "title", Description: "Title", Type: "text", Required: true},
+				{Name: "content", Description: "Content", Type: "text", Required: true},
+				{Name: "thoughts", Description: "Thoughts", Type: "text", Required: false},
+				{Name: "location", Description: "Location", Type: "text", Required: false},
+				{Name: "tags", Description: "Topic tags", Type: "text", Required: false},
 			},
-			Tags:      []string{"生活", "分享", "日常"},
+			Tags:      []string{"lifestyle", "sharing", "daily"},
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		{
 			ID:          "entertainment-review",
-			Name:        "娱乐测评",
-			Description: "娱乐类内容测评模�?,
+			Name:        "Entertainment Review",
+			Description: "Entertainment content review template",
 			Platform:    "douyin",
-			Category:    "娱乐",
-			Template:    "【{title}�?
-
-🎯 {overview}
-
-�?优点：{pros}
-
-�?缺点：{cons}
-
-💰 价格：{price}
-
-💭 总结：{summary}
-
-#{tags}",
+			Category:    "entertainment",
+			Template:    "[{title}]\n\nOverview: {overview}\n\nPros: {pros}\n\nCons: {cons}\n\nPrice: {price}\n\nSummary: {summary}\n\n#{tags}",
 			Variables: []TemplateVariable{
-				{Name: "title", Description: "测评标题", Type: "text", Required: true},
-				{Name: "overview", Description: "概述", Type: "text", Required: true},
-				{Name: "pros", Description: "优点", Type: "text", Required: true},
-				{Name: "cons", Description: "缺点", Type: "text", Required: true},
-				{Name: "price", Description: "价格", Type: "text", Required: false},
-				{Name: "summary", Description: "总结", Type: "text", Required: true},
-				{Name: "tags", Description: "话题标签", Type: "text", Required: false},
+				{Name: "title", Description: "Review title", Type: "text", Required: true},
+				{Name: "overview", Description: "Overview", Type: "text", Required: true},
+				{Name: "pros", Description: "Pros", Type: "text", Required: true},
+				{Name: "cons", Description: "Cons", Type: "text", Required: true},
+				{Name: "price", Description: "Price", Type: "text", Required: false},
+				{Name: "summary", Description: "Summary", Type: "text", Required: true},
+				{Name: "tags", Description: "Topic tags", Type: "text", Required: false},
 			},
-			Tags:      []string{"测评", "娱乐", "推荐"},
+			Tags:      []string{"review", "entertainment", "recommendation"},
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -186,7 +147,6 @@ func (tm *TemplateManager) loadDefaults() {
 	}
 }
 
-// CreateTemplate 创建模板
 func (tm *TemplateManager) CreateTemplate(template *ContentTemplate) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
@@ -205,7 +165,6 @@ func (tm *TemplateManager) CreateTemplate(template *ContentTemplate) error {
 	return nil
 }
 
-// GetTemplate 获取模板
 func (tm *TemplateManager) GetTemplate(id string) (*ContentTemplate, error) {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
@@ -217,7 +176,6 @@ func (tm *TemplateManager) GetTemplate(id string) (*ContentTemplate, error) {
 	return template, nil
 }
 
-// ListTemplates 列出模板
 func (tm *TemplateManager) ListTemplates(filter TemplateFilter) []*ContentTemplate {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
@@ -238,7 +196,6 @@ func (tm *TemplateManager) ListTemplates(filter TemplateFilter) []*ContentTempla
 	return result
 }
 
-// UpdateTemplate 更新模板
 func (tm *TemplateManager) UpdateTemplate(template *ContentTemplate) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
@@ -256,7 +213,6 @@ func (tm *TemplateManager) UpdateTemplate(template *ContentTemplate) error {
 	return nil
 }
 
-// DeleteTemplate 删除模板
 func (tm *TemplateManager) DeleteTemplate(id string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
@@ -269,7 +225,6 @@ func (tm *TemplateManager) DeleteTemplate(id string) error {
 	return nil
 }
 
-// ApplyTemplate 应用模板
 func (tm *TemplateManager) ApplyTemplate(templateID string, values map[string]string) (string, error) {
 	template, err := tm.GetTemplate(templateID)
 	if err != nil {
@@ -288,7 +243,6 @@ func (tm *TemplateManager) ApplyTemplate(templateID string, values map[string]st
 		result = replaceAll(result, "{"+v.Name+"}", value)
 	}
 
-	// 更新使用次数
 	tm.mu.Lock()
 	template.UsageCount++
 	tm.mu.Unlock()
@@ -296,7 +250,6 @@ func (tm *TemplateManager) ApplyTemplate(templateID string, values map[string]st
 	return result, nil
 }
 
-// JSONTemplateStorage JSON文件存储实现
 type JSONTemplateStorage struct {
 	dataDir string
 }

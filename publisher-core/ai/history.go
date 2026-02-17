@@ -11,11 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// ContentHistory 内容历史记录
 type ContentHistory struct {
 	ID           string                 `json:"id"`
 	Platform     string                 `json:"platform"`
-	Type         string                 `json:"type"` // generated, rewritten, transcribed
+	Type         string                 `json:"type"`
 	Title        string                 `json:"title"`
 	Content      string                 `json:"content"`
 	OriginalText string                 `json:"original_text,omitempty"`
@@ -24,27 +23,24 @@ type ContentHistory struct {
 	Provider     string                 `json:"provider"`
 	Model        string                 `json:"model"`
 	Tokens       TokenUsage             `json:"tokens"`
-	Rating       int                    `json:"rating"` // 1-5�?
+	Rating       int                    `json:"rating"`
 	Tags         []string               `json:"tags"`
 	Metadata     map[string]interface{} `json:"metadata"`
 	CreatedAt    time.Time              `json:"created_at"`
 	PublishedAt  *time.Time             `json:"published_at,omitempty"`
 }
 
-// TokenUsage Token使用�?
 type TokenUsage struct {
 	Input  int `json:"input"`
 	Output int `json:"output"`
 	Total  int `json:"total"`
 }
 
-// HistoryManager 历史管理�?
 type HistoryManager struct {
 	mu      sync.RWMutex
 	storage HistoryStorage
 }
 
-// HistoryStorage 历史存储接口
 type HistoryStorage interface {
 	Save(history *ContentHistory) error
 	Load(id string) (*ContentHistory, error)
@@ -53,42 +49,38 @@ type HistoryStorage interface {
 	GetStats(platform string, days int) (*HistoryStats, error)
 }
 
-// HistoryFilter 历史过滤�?
 type HistoryFilter struct {
-	Platform string
-	Type     string
+	Platform  string
+	Type      string
 	StartDate *time.Time
 	EndDate   *time.Time
-	Limit    int
-	Offset   int
+	Limit     int
+	Offset    int
 }
 
-// HistoryStats 历史统计
 type HistoryStats struct {
-	TotalGenerated   int            `json:"total_generated"`
-	TotalPublished   int            `json:"total_published"`
-	TotalTokens      TokenUsage     `json:"total_tokens"`
-	AvgRating        float64        `json:"avg_rating"`
-	PlatformStats    map[string]int `json:"platform_stats"`
-	TypeStats        map[string]int `json:"type_stats"`
-	TopModels        []ModelUsage   `json:"top_models"`
+	TotalGenerated int            `json:"total_generated"`
+	TotalPublished int            `json:"total_published"`
+	TotalTokens    TokenUsage     `json:"total_tokens"`
+	TotalRating    int            `json:"total_rating"`
+	AvgRating      float64        `json:"avg_rating"`
+	PlatformStats  map[string]int `json:"platform_stats"`
+	TypeStats      map[string]int `json:"type_stats"`
+	TopModels      []ModelUsage   `json:"top_models"`
 }
 
-// ModelUsage 模型使用统计
 type ModelUsage struct {
 	Model     string `json:"model"`
 	Count     int    `json:"count"`
 	AvgRating int    `json:"avg_rating"`
 }
 
-// NewHistoryManager 创建历史管理�?
 func NewHistoryManager(storage HistoryStorage) *HistoryManager {
 	return &HistoryManager{
 		storage: storage,
 	}
 }
 
-// SaveHistory 保存历史记录
 func (hm *HistoryManager) SaveHistory(history *ContentHistory) error {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
@@ -106,7 +98,6 @@ func (hm *HistoryManager) SaveHistory(history *ContentHistory) error {
 	return nil
 }
 
-// GetHistory 获取历史记录
 func (hm *HistoryManager) GetHistory(id string) (*ContentHistory, error) {
 	hm.mu.RLock()
 	defer hm.mu.RUnlock()
@@ -117,7 +108,6 @@ func (hm *HistoryManager) GetHistory(id string) (*ContentHistory, error) {
 	return hm.storage.Load(id)
 }
 
-// ListHistory 列出历史记录
 func (hm *HistoryManager) ListHistory(filter HistoryFilter) ([]*ContentHistory, error) {
 	hm.mu.RLock()
 	defer hm.mu.RUnlock()
@@ -128,7 +118,6 @@ func (hm *HistoryManager) ListHistory(filter HistoryFilter) ([]*ContentHistory, 
 	return hm.storage.List(filter)
 }
 
-// DeleteHistory 删除历史记录
 func (hm *HistoryManager) DeleteHistory(id string) error {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
@@ -139,7 +128,6 @@ func (hm *HistoryManager) DeleteHistory(id string) error {
 	return hm.storage.Delete(id)
 }
 
-// RateHistory 评分历史记录
 func (hm *HistoryManager) RateHistory(id string, rating int) error {
 	if rating < 1 || rating > 5 {
 		return fmt.Errorf("rating must be between 1 and 5")
@@ -154,7 +142,6 @@ func (hm *HistoryManager) RateHistory(id string, rating int) error {
 	return hm.SaveHistory(history)
 }
 
-// GetStats 获取统计信息
 func (hm *HistoryManager) GetStats(platform string, days int) (*HistoryStats, error) {
 	hm.mu.RLock()
 	defer hm.mu.RUnlock()
@@ -165,7 +152,6 @@ func (hm *HistoryManager) GetStats(platform string, days int) (*HistoryStats, er
 	return hm.storage.GetStats(platform, days)
 }
 
-// JSONHistoryStorage JSON文件存储实现
 type JSONHistoryStorage struct {
 	dataDir string
 	mu      sync.RWMutex
@@ -196,7 +182,6 @@ func (s *JSONHistoryStorage) Save(history *ContentHistory) error {
 }
 
 func (s *JSONHistoryStorage) Load(id string) (*ContentHistory, error) {
-	// 需要在所有日期目录中查找
 	files, err := filepath.Glob(filepath.Join(s.dataDir, "*", id+".json"))
 	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("history not found: %s", id)
@@ -220,7 +205,6 @@ func (s *JSONHistoryStorage) List(filter HistoryFilter) ([]*ContentHistory, erro
 
 	var histories []*ContentHistory
 
-	// 遍历日期目录
 	dirs, err := filepath.Glob(filepath.Join(s.dataDir, "*"))
 	if err != nil {
 		return nil, err
@@ -243,7 +227,6 @@ func (s *JSONHistoryStorage) List(filter HistoryFilter) ([]*ContentHistory, erro
 				continue
 			}
 
-			// 应用过滤条件
 			if filter.Platform != "" && h.Platform != filter.Platform {
 				continue
 			}
@@ -261,7 +244,6 @@ func (s *JSONHistoryStorage) List(filter HistoryFilter) ([]*ContentHistory, erro
 		}
 	}
 
-	// 应用分页
 	if filter.Offset > 0 && filter.Offset < len(histories) {
 		histories = histories[filter.Offset:]
 	}
@@ -313,14 +295,14 @@ func (s *JSONHistoryStorage) GetStats(platform string, days int) (*HistoryStats,
 		stats.TotalTokens.Input += h.Tokens.Input
 		stats.TotalTokens.Output += h.Tokens.Output
 		stats.TotalTokens.Total += h.Tokens.Total
-		stats.Rating += h.Rating
+		stats.TotalRating += h.Rating
 
 		stats.PlatformStats[h.Platform]++
 		stats.TypeStats[h.Type]++
 	}
 
 	if stats.TotalGenerated > 0 {
-		stats.AvgRating = float64(stats.Rating) / float64(stats.TotalGenerated)
+		stats.AvgRating = float64(stats.TotalRating) / float64(stats.TotalGenerated)
 	}
 
 	return stats, nil

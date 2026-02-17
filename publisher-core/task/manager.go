@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TaskStatus 任务状�?
+// TaskStatus 任务状态
 type TaskStatus string
 
 const (
@@ -41,7 +41,7 @@ type Task struct {
 // TaskHandler 任务处理函数
 type TaskHandler func(ctx context.Context, task *Task) error
 
-// TaskManager 任务管理�?
+// TaskManager 任务管理器
 type TaskManager struct {
 	mu       sync.RWMutex
 	tasks    map[string]*Task
@@ -66,7 +66,7 @@ type TaskFilter struct {
 	Limit    int
 }
 
-// NewTaskManager 创建任务管理�?
+// NewTaskManager 创建任务管理器
 func NewTaskManager(storage TaskStorage) *TaskManager {
 	return &TaskManager{
 		tasks:    make(map[string]*Task),
@@ -76,7 +76,7 @@ func NewTaskManager(storage TaskStorage) *TaskManager {
 	}
 }
 
-// RegisterHandler 注册任务处理�?
+// RegisterHandler 注册任务处理器
 func (m *TaskManager) RegisterHandler(taskType string, handler TaskHandler) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -84,7 +84,7 @@ func (m *TaskManager) RegisterHandler(taskType string, handler TaskHandler) {
 	logrus.Infof("已注册任务处理器: %s", taskType)
 }
 
-// CreateTask 创建新任�?
+// CreateTask 创建新任务
 func (m *TaskManager) CreateTask(taskType string, platform string, payload map[string]interface{}) (*Task, error) {
 	task := &Task{
 		ID:        uuid.New().String(),
@@ -118,14 +118,14 @@ func (m *TaskManager) Execute(ctx context.Context, taskID string) error {
 	m.mu.RUnlock()
 
 	if !exists {
-		return fmt.Errorf("任务不存�? %s", taskID)
+		return fmt.Errorf("任务不存在: %s", taskID)
 	}
 
 	if handler == nil {
 		return fmt.Errorf("未注册任务处理器: %s", task.Type)
 	}
 
-	// 更新状态为运行�?
+	// 更新状态为运行中
 	m.updateTaskStatus(task, TaskStatusRunning)
 	now := time.Now()
 	task.StartedAt = &now
@@ -133,7 +133,7 @@ func (m *TaskManager) Execute(ctx context.Context, taskID string) error {
 	// 执行任务
 	err := handler(ctx, task)
 
-	// 更新最终状�?
+	// 更新最终状态
 	if err != nil {
 		task.Error = err.Error()
 		m.updateTaskStatus(task, TaskStatusFailed)
@@ -176,7 +176,7 @@ func (m *TaskManager) GetTask(taskID string) (*Task, error) {
 		return task, nil
 	}
 
-	// 从存储加�?
+	// 从存储加载
 	if m.storage != nil {
 		task, err := m.storage.Load(taskID)
 		if err != nil {
@@ -188,7 +188,7 @@ func (m *TaskManager) GetTask(taskID string) (*Task, error) {
 		return task, nil
 	}
 
-	return nil, fmt.Errorf("任务不存�? %s", taskID)
+	return nil, fmt.Errorf("任务不存在: %s", taskID)
 }
 
 // ListTasks 列出任务
@@ -227,11 +227,11 @@ func (m *TaskManager) Cancel(taskID string) error {
 
 	task, exists := m.tasks[taskID]
 	if !exists {
-		return fmt.Errorf("任务不存�? %s", taskID)
+		return fmt.Errorf("任务不存在: %s", taskID)
 	}
 
 	if task.Status == TaskStatusRunning {
-		return fmt.Errorf("无法取消正在运行的任�?)
+		return fmt.Errorf("无法取消正在运行的任务")
 	}
 
 	task.Status = TaskStatusCancelled
@@ -240,7 +240,7 @@ func (m *TaskManager) Cancel(taskID string) error {
 
 	if m.storage != nil {
 		if err := m.storage.Save(task); err != nil {
-			logrus.Warnf("保存任务状态失�? %v", err)
+			logrus.Warnf("保存任务状态失败: %v", err)
 		}
 	}
 
@@ -309,7 +309,7 @@ func (s *MemoryStorage) Load(id string) (*Task, error) {
 	defer s.mu.RUnlock()
 	task, exists := s.tasks[id]
 	if !exists {
-		return nil, fmt.Errorf("任务不存�? %s", id)
+		return nil, fmt.Errorf("任务不存在: %s", id)
 	}
 	return task, nil
 }

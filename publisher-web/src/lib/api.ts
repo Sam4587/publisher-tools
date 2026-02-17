@@ -1,6 +1,6 @@
 import type { Platform, PlatformInfo, LoginResult, PublishResult, Task, AccountStatus, APIResponse, PublishContent, HotTopic, HotSource, Pagination, CrossPlatformAnalysis, AIAnalysisResult } from '@/types/api'
 
-const API_BASE = 'http://localhost:3001/api'
+const API_BASE = '/api/v1'
 const HOT_API_BASE = '/api/hot-topics'
 
 // 平台列表响应类型

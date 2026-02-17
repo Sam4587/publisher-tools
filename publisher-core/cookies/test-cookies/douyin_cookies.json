@@ -1,0 +1,12 @@
+{
+  "session_id": {
+    "domain": "douyin.com",
+    "expires": 0,
+    "httpOnly": false,
+    "name": "session_id",
+    "path": "",
+    "sameSite": "",
+    "secure": false,
+    "value": "abc123"
+  }
+}

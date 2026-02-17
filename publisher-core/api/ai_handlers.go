@@ -13,6 +13,9 @@ type AIServiceAPI interface {
 	GenerateStream(providerName string, opts *provider.GenerateOptions) (<-chan string, error)
 	ListProviders() []string
 	ListModels() map[string][]string
+	GenerateContent(prompt string, options map[string]interface{}) (interface{}, error)
+	OptimizeTitle(title string, platform string) (string, error)
+	AnalyzeContent(content string) (interface{}, error)
 }
 
 func (s *Server) WithAI(ai AIServiceAPI) *Server {
@@ -33,12 +36,12 @@ func (s *Server) setupAIRoutes() {
 
 func (s *Server) listAIProviders(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
 	providers := s.ai.ListProviders()
-	s.jsonSuccess(w, map[string]interface{}{
+	jsonSuccess(w, map[string]interface{}{
 		"providers": providers,
 		"count":     len(providers),
 	})
@@ -46,17 +49,17 @@ func (s *Server) listAIProviders(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listAIModels(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
 	models := s.ai.ListModels()
-	s.jsonSuccess(w, models)
+	jsonSuccess(w, models)
 }
 
 func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -68,7 +71,7 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.jsonError(w, "INVALID_REQUEST", "无效的请求格�? "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "INVALID_REQUEST", "Invalid request format: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -81,16 +84,16 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.ai.Generate("", opts)
 	if err != nil {
-		s.jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
+		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	s.jsonSuccess(w, result)
+	jsonSuccess(w, result)
 }
 
 func (s *Server) aiGenerateWithProvider(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -105,7 +108,7 @@ func (s *Server) aiGenerateWithProvider(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.jsonError(w, "INVALID_REQUEST", "无效的请求格�? "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "INVALID_REQUEST", "Invalid request format: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -118,16 +121,16 @@ func (s *Server) aiGenerateWithProvider(w http.ResponseWriter, r *http.Request) 
 
 	result, err := s.ai.Generate(providerName, opts)
 	if err != nil {
-		s.jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
+		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	s.jsonSuccess(w, result)
+	jsonSuccess(w, result)
 }
 
 func (s *Server) aiAnalyzeHotspot(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -137,12 +140,12 @@ func (s *Server) aiAnalyzeHotspot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.jsonError(w, "INVALID_REQUEST", "无效的请求格�? "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "INVALID_REQUEST", "Invalid request format: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	messages := []provider.Message{
-		{Role: provider.RoleSystem, Content: "你是一位热点分析专家，擅长分析新闻热点、提取关键信息、判断趋势走向�?},
+		{Role: provider.RoleSystem, Content: "You are a hotspot analysis expert skilled in analyzing news hotspots, extracting key information, and determining trend directions."},
 		{Role: provider.RoleUser, Content: buildHotspotPrompt(req.Title, req.Content)},
 	}
 
@@ -153,11 +156,11 @@ func (s *Server) aiAnalyzeHotspot(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.ai.Generate("", opts)
 	if err != nil {
-		s.jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
+		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	s.jsonSuccess(w, map[string]interface{}{
+	jsonSuccess(w, map[string]interface{}{
 		"analysis": result.Content,
 		"provider": result.Provider,
 		"model":    result.Model,
@@ -166,7 +169,7 @@ func (s *Server) aiAnalyzeHotspot(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -178,7 +181,7 @@ func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.jsonError(w, "INVALID_REQUEST", "无效的请求格�? "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "INVALID_REQUEST", "Invalid request format: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -186,14 +189,14 @@ func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 		req.Length = 500
 	}
 	if req.Style == "" {
-		req.Style = "轻松幽默"
+		req.Style = "casual"
 	}
 	if req.Platform == "" {
-		req.Platform = "通用"
+		req.Platform = "general"
 	}
 
 	messages := []provider.Message{
-		{Role: provider.RoleSystem, Content: "你是一位专业的内容创作者，擅长撰写吸引人的文章和社交媒体内容�?},
+		{Role: provider.RoleSystem, Content: "You are a professional content creator skilled in writing engaging articles and social media content."},
 		{Role: provider.RoleUser, Content: buildContentPrompt(req.Topic, req.Platform, req.Style, req.Length)},
 	}
 
@@ -204,11 +207,11 @@ func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.ai.Generate("", opts)
 	if err != nil {
-		s.jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
+		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	s.jsonSuccess(w, map[string]interface{}{
+	jsonSuccess(w, map[string]interface{}{
 		"content":  result.Content,
 		"provider": result.Provider,
 		"model":    result.Model,
@@ -217,7 +220,7 @@ func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) aiContentRewrite(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -228,19 +231,19 @@ func (s *Server) aiContentRewrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.jsonError(w, "INVALID_REQUEST", "无效的请求格�? "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "INVALID_REQUEST", "Invalid request format: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if req.Style == "" {
-		req.Style = "正式专业"
+		req.Style = "professional"
 	}
 	if req.Platform == "" {
-		req.Platform = "通用"
+		req.Platform = "general"
 	}
 
 	messages := []provider.Message{
-		{Role: provider.RoleSystem, Content: "你是一位专业的内容创作者，擅长改写内容以适应不同平台和风格�?},
+		{Role: provider.RoleSystem, Content: "You are a professional content creator skilled in rewriting content for different platforms and styles."},
 		{Role: provider.RoleUser, Content: buildRewritePrompt(req.Content, req.Style, req.Platform)},
 	}
 
@@ -251,11 +254,11 @@ func (s *Server) aiContentRewrite(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.ai.Generate("", opts)
 	if err != nil {
-		s.jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
+		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	s.jsonSuccess(w, map[string]interface{}{
+	jsonSuccess(w, map[string]interface{}{
 		"content":  result.Content,
 		"provider": result.Provider,
 		"model":    result.Model,
@@ -264,7 +267,7 @@ func (s *Server) aiContentRewrite(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) aiContentAudit(w http.ResponseWriter, r *http.Request) {
 	if s.ai == nil {
-		s.jsonError(w, "SERVICE_UNAVAILABLE", "AI服务未初始化", http.StatusServiceUnavailable)
+		jsonError(w, "SERVICE_UNAVAILABLE", "AI service not initialized", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -273,12 +276,12 @@ func (s *Server) aiContentAudit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.jsonError(w, "INVALID_REQUEST", "无效的请求格�? "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "INVALID_REQUEST", "Invalid request format: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	messages := []provider.Message{
-		{Role: provider.RoleSystem, Content: "你是一位内容审核专家，擅长识别内容中的敏感信息、违规内容和潜在风险�?},
+		{Role: provider.RoleSystem, Content: "You are a content review expert skilled in identifying sensitive information, violations, and potential risks in content."},
 		{Role: provider.RoleUser, Content: buildAuditPrompt(req.Content)},
 	}
 
@@ -289,11 +292,11 @@ func (s *Server) aiContentAudit(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.ai.Generate("", opts)
 	if err != nil {
-		s.jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
+		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	s.jsonSuccess(w, map[string]interface{}{
+	jsonSuccess(w, map[string]interface{}{
 		"audit_result": result.Content,
 		"provider":     result.Provider,
 		"model":        result.Model,
@@ -301,56 +304,56 @@ func (s *Server) aiContentAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 func buildHotspotPrompt(title, content string) string {
-	return `请分析以下热点话题：
+	return `Analyze the following hotspot topic:
 
-标题：` + title + `
-内容：` + content + `
+Title: ` + title + `
+Content: ` + content + `
 
-请从以下维度进行分析�?
-1. 事件摘要�?0字以内）
-2. 关键要点�?-5个要点）
-3. 情感倾向（正�?负面/中性）
-4. 相关性评分（1-10分）
-5. 内容创作建议�?-3条）
+Analyze from the following dimensions:
+1. Event summary (within 50 words)
+2. Key points (3-5 points)
+3. Sentiment (positive/negative/neutral)
+4. Relevance score (1-10)
+5. Content creation suggestions (2-3 suggestions)
 
-请以JSON格式输出。`
+Output in JSON format.`
 }
 
 func buildContentPrompt(topic, platform, style string, length int) string {
-	return `请根据以下要求生成内容：
+	return `Generate content based on the following requirements:
 
-主题：` + topic + `
-平台：` + platform + `
-风格：` + style + `
-字数要求：` + string(rune(length)) + `字左�?
+Topic: ` + topic + `
+Platform: ` + platform + `
+Style: ` + style + `
+Word count: Around ` + string(rune(length)) + ` words
 
-请生成适合该平台发布的内容，包含标题和正文。`
+Generate content suitable for the platform, including title and body.`
 }
 
 func buildRewritePrompt(content, style, platform string) string {
-	return `请将以下内容改写为` + style + `风格，适合` + platform + `平台发布�?
+	return `Rewrite the following content in ` + style + ` style, suitable for ` + platform + ` platform:
 
-原文�?
+Original:
 ` + content + `
 
-要求�?
-1. 保持原文核心意思不�?
-2. 改变表达方式和语言风格
-3. 符合平台内容规范
+Requirements:
+1. Keep the core meaning unchanged
+2. Change expression and language style
+3. Comply with platform content guidelines
 
-请直接输出改写后的内容。`
+Output the rewritten content directly.`
 }
 
 func buildAuditPrompt(content string) string {
-	return `请审核以下内容是否存在问题：
+	return `Review the following content for issues:
 
 ` + content + `
 
-请检查：
-1. 是否包含敏感词汇或违规内�?
-2. 是否存在事实错误
-3. 是否有不当表�?
-4. 是否适合公开平台发布
+Check:
+1. Whether it contains sensitive words or violations
+2. Whether there are factual errors
+3. Whether there are inappropriate expressions
+4. Whether it is suitable for public platform publishing
 
-请以JSON格式输出审核结果。`
+Output the review result in JSON format.`
 }

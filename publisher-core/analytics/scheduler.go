@@ -2,13 +2,14 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// ScheduledCollector 定时采集�?
 type ScheduledCollector struct {
 	mu         sync.RWMutex
 	service    *AnalyticsService
@@ -19,7 +20,6 @@ type ScheduledCollector struct {
 	maxWorkers int
 }
 
-// CollectionTask 采集任务
 type CollectionTask struct {
 	ID         string
 	Platform   Platform
@@ -32,7 +32,6 @@ type CollectionTask struct {
 	MaxRetries int
 }
 
-// NewScheduledCollector 创建定时采集�?
 func NewScheduledCollector(service *AnalyticsService, interval time.Duration) *ScheduledCollector {
 	return &ScheduledCollector{
 		service:    service,
@@ -42,7 +41,6 @@ func NewScheduledCollector(service *AnalyticsService, interval time.Duration) *S
 	}
 }
 
-// Start 启动定时采集
 func (sc *ScheduledCollector) Start(ctx context.Context) error {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -60,7 +58,6 @@ func (sc *ScheduledCollector) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop 停止定时采集
 func (sc *ScheduledCollector) Stop() {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -77,7 +74,6 @@ func (sc *ScheduledCollector) Stop() {
 	logrus.Info("Scheduled collector stopped")
 }
 
-// run 运行采集循环
 func (sc *ScheduledCollector) run(ctx context.Context) {
 	for {
 		select {
@@ -90,7 +86,6 @@ func (sc *ScheduledCollector) run(ctx context.Context) {
 	}
 }
 
-// executeTasks 执行采集任务
 func (sc *ScheduledCollector) executeTasks(ctx context.Context) {
 	sc.mu.RLock()
 	tasks := make([]CollectionTask, len(sc.taskQueue))
@@ -104,22 +99,18 @@ func (sc *ScheduledCollector) executeTasks(ctx context.Context) {
 
 	logrus.Infof("Executing %d collection tasks", len(tasks))
 
-	// 使用工作池并发执�?
 	taskChan := make(chan CollectionTask, len(tasks))
 	resultChan := make(chan error, len(tasks))
 
-	// 启动工作goroutine
 	for i := 0; i < sc.maxWorkers; i++ {
 		go sc.worker(ctx, taskChan, resultChan)
 	}
 
-	// 发送任�?
 	for _, task := range tasks {
 		taskChan <- task
 	}
 	close(taskChan)
 
-	// 等待结果
 	for i := 0; i < len(tasks); i++ {
 		if err := <-resultChan; err != nil {
 			logrus.Warnf("Task execution failed: %v", err)
@@ -127,7 +118,6 @@ func (sc *ScheduledCollector) executeTasks(ctx context.Context) {
 	}
 }
 
-// worker 工作goroutine
 func (sc *ScheduledCollector) worker(ctx context.Context, tasks <-chan CollectionTask, results chan<- error) {
 	for task := range tasks {
 		var err error
@@ -145,7 +135,6 @@ func (sc *ScheduledCollector) worker(ctx context.Context, tasks <-chan Collectio
 			task.LastError = err.Error()
 			task.Retries++
 			if task.Retries < task.MaxRetries {
-				// 重新加入队列
 				sc.mu.Lock()
 				sc.taskQueue = append(sc.taskQueue, task)
 				sc.mu.Unlock()
@@ -156,7 +145,6 @@ func (sc *ScheduledCollector) worker(ctx context.Context, tasks <-chan Collectio
 	}
 }
 
-// AddTask 添加采集任务
 func (sc *ScheduledCollector) AddTask(task CollectionTask) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -173,7 +161,6 @@ func (sc *ScheduledCollector) AddTask(task CollectionTask) {
 	logrus.Infof("Collection task added: %s - %s", task.Platform, task.Type)
 }
 
-// RemoveTask 移除采集任务
 func (sc *ScheduledCollector) RemoveTask(taskID string) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -186,14 +173,12 @@ func (sc *ScheduledCollector) RemoveTask(taskID string) {
 	}
 }
 
-// GetQueueLength 获取队列长度
 func (sc *ScheduledCollector) GetQueueLength() int {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 	return len(sc.taskQueue)
 }
 
-// IsRunning 检查是否运行中
 func (sc *ScheduledCollector) IsRunning() bool {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()

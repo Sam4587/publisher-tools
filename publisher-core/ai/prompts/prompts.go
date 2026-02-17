@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	RoleContentCreator = "你是一位专业的内容创作者，擅长撰写吸引人的文章和社交媒体内容�?
-	RoleHotspotAnalyst = "你是一位热点分析专家，擅长分析新闻热点、提取关键信息、判断趋势走向�?
-	RoleContentAuditor = "你是一位内容审核专家，擅长识别内容中的敏感信息、违规内容和潜在风险�?
-	RoleSEOExpert      = "你是一位SEO优化专家，擅长优化内容以提高搜索引擎排名和社交媒体曝光率�?
+	RoleContentCreator = "You are a professional content creator skilled in writing engaging articles and social media content."
+	RoleHotspotAnalyst = "You are a hotspot analysis expert skilled in analyzing news hotspots, extracting key information, and determining trend directions."
+	RoleContentAuditor = "You are a content review expert skilled in identifying sensitive information, violations, and potential risks in content."
+	RoleSEOExpert      = "You are an SEO optimization expert skilled in optimizing content to improve search engine rankings and social media exposure."
 )
 
 type PromptTemplate struct {
@@ -22,141 +22,141 @@ type PromptTemplate struct {
 var Templates = map[string]PromptTemplate{
 	"generate_content": {
 		System: RoleContentCreator,
-		User: `请根据以下要求生成内容：
+		User: `Generate content based on the following requirements:
 
-主题：{{.Topic}}
-平台：{{.Platform}}
-风格：{{.Style}}
-字数要求：{{.Length}}字左�?
+Topic: {{.Topic}}
+Platform: {{.Platform}}
+Style: {{.Style}}
+Word count: Around {{.Length}} words
 
-请生成一篇适合{{.Platform}}平台发布的{{.Style}}风格的内容，包含标题和正文�?
-格式要求�?
-标题：[标题内容]
-正文�?
-[正文内容]`,
+Generate content suitable for {{.Platform}} platform in {{.Style}} style, including title and body.
+Format:
+Title: [Title content]
+Body:
+[Body content]`,
 	},
 
 	"rewrite_content": {
 		System: RoleContentCreator,
-		User: `请将以下内容改写为{{.Style}}风格，适合{{.Platform}}平台发布�?
+		User: `Rewrite the following content in {{.Style}} style, suitable for {{.Platform}} platform:
 
-原文�?
+Original:
 {{.Content}}
 
-要求�?
-1. 保持原文核心意思不�?
-2. 改变表达方式和语言风格
-3. 字数控制在{{.Length}}字左�?
-4. 符合{{.Platform}}平台的内容规�?
+Requirements:
+1. Keep the core meaning unchanged
+2. Change expression and language style
+3. Word count around {{.Length}} words
+4. Comply with {{.Platform}} platform content guidelines
 
-请直接输出改写后的内容。`,
+Output the rewritten content directly.`,
 	},
 
 	"expand_content": {
 		System: RoleContentCreator,
-		User: `请将以下内容扩写，使其更加丰富详细：
+		User: `Expand the following content to make it richer and more detailed:
 
-原文�?
+Original:
 {{.Content}}
 
-要求�?
-1. 保持原文核心意思和风格
-2. 增加细节、例子或论据
-3. 扩写后字数约{{.Length}}�?
-4. 适合{{.Platform}}平台发布
+Requirements:
+1. Keep the core meaning and style
+2. Add details, examples or arguments
+3. Expanded word count around {{.Length}} words
+4. Suitable for {{.Platform}} platform
 
-请输出扩写后的完整内容。`,
+Output the complete expanded content.`,
 	},
 
 	"summarize_content": {
 		System: RoleContentCreator,
-		User: `请对以下内容进行摘要�?
+		User: `Summarize the following content:
 
 {{.Content}}
 
-要求�?
-1. 提取核心要点
-2. 摘要字数控制在{{.Length}}字以�?
-3. 语言简洁明�?
+Requirements:
+1. Extract core points
+2. Summary word count within {{.Length}} words
+3. Concise and clear language
 
-请输出摘要内容。`,
+Output the summary content.`,
 	},
 
 	"analyze_hotspot": {
 		System: RoleHotspotAnalyst,
-		User: `请分析以下热点话题：
+		User: `Analyze the following hotspot topic:
 
-标题：{{.Title}}
-内容：{{.Content}}
+Title: {{.Title}}
+Content: {{.Content}}
 
-请从以下维度进行分析�?
-1. 事件摘要�?0字以内）
-2. 关键要点�?-5个要点）
-3. 情感倾向（正�?负面/中性）
-4. 相关性评分（1-10分，表示对普通用户的相关程度�?
-5. 内容创作建议�?-3条建议）
-6. 推荐标签�?-5个标签）
+Analyze from the following dimensions:
+1. Event summary (within 50 words)
+2. Key points (3-5 points)
+3. Sentiment (positive/negative/neutral)
+4. Relevance score (1-10, indicating relevance to general users)
+5. Content creation suggestions (2-3 suggestions)
+6. Recommended tags (3-5 tags)
 
-请以JSON格式输出�?
+Output in JSON format:
 {
-  "summary": "事件摘要",
-  "key_points": ["要点1", "要点2"],
-  "sentiment": "情感倾向",
-  "relevance": 评分数字,
-  "suggestions": ["建议1", "建议2"],
-  "tags": ["标签1", "标签2"]
+  "summary": "Event summary",
+  "key_points": ["Point 1", "Point 2"],
+  "sentiment": "Sentiment",
+  "relevance": Score number,
+  "suggestions": ["Suggestion 1", "Suggestion 2"],
+  "tags": ["Tag 1", "Tag 2"]
 }`,
 	},
 
 	"audit_content": {
 		System: RoleContentAuditor,
-		User: `请审核以下内容是否存在问题：
+		User: `Review the following content for issues:
 
 {{.Content}}
 
-请检查以下方面：
-1. 是否包含敏感词汇或违规内�?
-2. 是否存在事实错误
-3. 是否有不当表�?
-4. 是否适合公开平台发布
+Check the following aspects:
+1. Whether it contains sensitive words or violations
+2. Whether there are factual errors
+3. Whether there are inappropriate expressions
+4. Whether it is suitable for public platform publishing
 
-请以JSON格式输出�?
+Output in JSON format:
 {
   "passed": true/false,
-  "issues": ["问题1", "问题2"],
-  "suggestions": ["修改建议1", "修改建议2"],
-  "score": 合规评分(0-100)
+  "issues": ["Issue 1", "Issue 2"],
+  "suggestions": ["Suggestion 1", "Suggestion 2"],
+  "score": Compliance score (0-100)
 }`,
 	},
 
 	"extract_keywords": {
 		System: RoleSEOExpert,
-		User: `请从以下内容中提取关键词�?
+		User: `Extract keywords from the following content:
 
 {{.Content}}
 
-要求�?
-1. 提取5-10个核心关键词
-2. 关键词应具有搜索价�?
-3. 适合作为标签使用
+Requirements:
+1. Extract 5-10 core keywords
+2. Keywords should have search value
+3. Suitable for use as tags
 
-请以JSON数组格式输出关键词列表。`,
+Output keywords list in JSON array format.`,
 	},
 
 	"generate_title": {
 		System: RoleSEOExpert,
-		User: `请为以下内容生成3个吸引人的标题：
+		User: `Generate 3 attractive titles for the following content:
 
 {{.Content}}
 
-平台：{{.Platform}}
+Platform: {{.Platform}}
 
-要求�?
-1. 标题吸引眼球但不标题�?
-2. 符合{{.Platform}}平台特点
-3. 每个标题不超�?0�?
+Requirements:
+1. Eye-catching but not clickbait
+2. Match {{.Platform}} platform characteristics
+3. Each title no more than 30 characters
 
-请以JSON数组格式输出标题列表。`,
+Output title list in JSON array format.`,
 	},
 }
 

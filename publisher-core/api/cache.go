@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// CacheItem 缓存�?
+// CacheItem 缓存项
 type CacheItem struct {
 	Data      interface{} `json:"data"`
 	ExpiresAt time.Time   `json:"expires_at"`
@@ -47,7 +47,7 @@ func (c *Cache) Set(key string, value interface{}, ttl time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// 检查是否超过最大大�?
+	// 检查是否超过最大大小
 	if len(c.items) >= c.maxSize {
 		c.evictOldest()
 	}
@@ -76,7 +76,7 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	// 检查是否过�?
+	// 检查是否过期
 	if time.Now().After(item.ExpiresAt) {
 		return nil, false
 	}
@@ -125,9 +125,9 @@ func (c *Cache) Stats() CacheStats {
 	}
 
 	return CacheStats{
-		TotalItems: len(c.items),
+		TotalItems:   len(c.items),
 		ExpiredItems: expired,
-		MaxSize: c.maxSize,
+		MaxSize:      c.maxSize,
 	}
 }
 
@@ -174,7 +174,7 @@ func (c *Cache) cleanup() {
 	}
 }
 
-// CacheMiddleware 缓存中间�?
+// CacheMiddleware 缓存中间件
 func CacheMiddleware(cache *Cache, ttl time.Duration, keyFunc func(r *http.Request) string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -186,7 +186,7 @@ func CacheMiddleware(cache *Cache, ttl time.Duration, keyFunc func(r *http.Reque
 
 			key := keyFunc(r)
 
-			// 尝试从缓存获�?
+			// 尝试从缓存获取
 			if data, found := cache.Get(key); found {
 				w.Header().Set("X-Cache", "HIT")
 				w.Header().Set("Content-Type", "application/json")
@@ -194,7 +194,7 @@ func CacheMiddleware(cache *Cache, ttl time.Duration, keyFunc func(r *http.Reque
 				return
 			}
 
-			// 创建响应记录�?
+			// 创建响应记录器
 			recorder := &responseRecorder{
 				ResponseWriter: w,
 				statusCode:     http.StatusOK,
@@ -202,7 +202,7 @@ func CacheMiddleware(cache *Cache, ttl time.Duration, keyFunc func(r *http.Reque
 
 			next.ServeHTTP(recorder, r)
 
-			// 如果响应成功，缓存结�?
+			// 如果响应成功，缓存结果
 			if recorder.statusCode == http.StatusOK {
 				var data interface{}
 				if err := json.Unmarshal(recorder.body.Bytes(), &data); err == nil {
@@ -214,7 +214,7 @@ func CacheMiddleware(cache *Cache, ttl time.Duration, keyFunc func(r *http.Reque
 	}
 }
 
-// responseRecorder 响应记录�?
+// responseRecorder 响应记录器
 type responseRecorder struct {
 	http.ResponseWriter
 	statusCode int
@@ -231,7 +231,7 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-// DefaultCacheKeyFunc 默认缓存键生成函�?
+// DefaultCacheKeyFunc 默认缓存键生成函数
 func DefaultCacheKeyFunc(r *http.Request) string {
 	return r.Method + ":" + r.URL.Path + ":" + r.URL.RawQuery
 }

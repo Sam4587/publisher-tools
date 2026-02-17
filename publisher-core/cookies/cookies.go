@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/go-rod/rod/lib/proto"
 )
@@ -75,7 +76,7 @@ func (m *Manager) Save(ctx context.Context, platform string, cookies []*proto.Ne
 	defer m.mu.Unlock()
 
 	if err := os.MkdirAll(m.cookieDir, 0755); err != nil {
-		return fmt.Errorf("创建 cookie 目录失败: %w", err)
+		return fmt.Errorf("failed to create cookie directory: %w", err)
 	}
 
 	path := m.getCookiePath(platform)
@@ -96,11 +97,11 @@ func (m *Manager) Save(ctx context.Context, platform string, cookies []*proto.Ne
 
 	data, err := json.MarshalIndent(cookieMap, "", "  ")
 	if err != nil {
-		return fmt.Errorf("序列�?cookie 失败: %w", err)
+		return fmt.Errorf("failed to marshal cookies: %w", err)
 	}
 
 	if err := os.WriteFile(path, data, 0600); err != nil {
-		return fmt.Errorf("保存 cookie 文件失败: %w", err)
+		return fmt.Errorf("failed to save cookie file: %w", err)
 	}
 
 	return nil
@@ -114,18 +115,18 @@ func (m *Manager) Load(ctx context.Context, platform string) (map[string]string,
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("读取 cookie 文件失败: %w", err)
+		return nil, fmt.Errorf("failed to read cookie file: %w", err)
 	}
 
 	var cookieMap map[string]map[string]interface{}
 	if err := json.Unmarshal(data, &cookieMap); err != nil {
-		return nil, fmt.Errorf("解析 cookie 文件失败: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal cookies: %w", err)
 	}
 
 	result := make(map[string]string)
-	for name, c := range cookieMap {
-		if val, ok := c["value"].(string); ok {
-			result[name] = val
+	for name, cookie := range cookieMap {
+		if value, ok := cookie["value"].(string); ok {
+			result[name] = value
 		}
 	}
 
@@ -140,42 +141,30 @@ func (m *Manager) LoadAsProto(ctx context.Context, platform string, domain strin
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("读取 cookie 文件失败: %w", err)
+		return nil, fmt.Errorf("failed to read cookie file: %w", err)
 	}
 
 	var cookieMap map[string]map[string]interface{}
 	if err := json.Unmarshal(data, &cookieMap); err != nil {
-		return nil, fmt.Errorf("解析 cookie 文件失败: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal cookies: %w", err)
 	}
 
 	var result []*proto.NetworkCookieParam
-	for _, c := range cookieMap {
-		cookie := &proto.NetworkCookieParam{
-			Name:     c["name"].(string),
-			Value:    c["value"].(string),
-			Domain:   domain,
-			Path:     "/",
-			HTTPOnly: false,
-			Secure:   false,
+	for _, cookie := range cookieMap {
+		param := &proto.NetworkCookieParam{
+			Name:  cookie["name"].(string),
+			Value: cookie["value"].(string),
 		}
-
-		if domainVal, ok := c["domain"].(string); ok && domainVal != "" {
-			cookie.Domain = domainVal
+		if domain != "" {
+			param.Domain = domain
 		}
-		if pathVal, ok := c["path"].(string); ok {
-			cookie.Path = pathVal
+		if d, ok := cookie["domain"].(string); ok && d != "" {
+			param.Domain = d
 		}
-		if httpOnly, ok := c["httpOnly"].(bool); ok {
-			cookie.HTTPOnly = httpOnly
+		if p, ok := cookie["path"].(string); ok {
+			param.Path = p
 		}
-		if secure, ok := c["secure"].(bool); ok {
-			cookie.Secure = secure
-		}
-
-		result = append(result, cookie)
+		result = append(result, param)
 	}
 
 	return result, nil
@@ -187,57 +176,103 @@ func (m *Manager) Delete(ctx context.Context, platform string) error {
 
 	path := m.getCookiePath(platform)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return err
+		return fmt.Errorf("failed to delete cookie file: %w", err)
 	}
+
 	return nil
 }
 
-func ExtractCookies(cookies []*proto.NetworkCookie, keys []string) map[string]string {
+func (m *Manager) List(ctx context.Context) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	files, err := os.ReadDir(m.cookieDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("failed to list cookie directory: %w", err)
+	}
+
+	var platforms []string
+	for _, file := range files {
+		if !file.IsDir() {
+			name := file.Name()
+			if len(name) > 12 && name[len(name)-12:] == "_cookies.json" {
+				platforms = append(platforms, name[:len(name)-12])
+			}
+		}
+	}
+
+	return platforms, nil
+}
+
+func ExtractCookies(cookies []*proto.NetworkCookie, keys []string) []*proto.NetworkCookie {
+	var result []*proto.NetworkCookie
 	keySet := make(map[string]bool)
 	for _, k := range keys {
 		keySet[k] = true
 	}
 
-	result := make(map[string]string)
 	for _, c := range cookies {
 		if keySet[c.Name] {
-			result[c.Name] = c.Value
+			result = append(result, c)
 		}
 	}
+
 	return result
 }
 
-func InitCookieDir() error {
-	return os.MkdirAll("./cookies", 0755)
+type CookieJar struct {
+	mu      sync.RWMutex
+	cookies map[string]map[string]*proto.NetworkCookie
 }
 
-func SaveCookies(cookies map[string]string, platform string) error {
-	if err := InitCookieDir(); err != nil {
-		return err
+func NewCookieJar() *CookieJar {
+	return &CookieJar{
+		cookies: make(map[string]map[string]*proto.NetworkCookie),
 	}
-
-	path := filepath.Join("./cookies", fmt.Sprintf("%s_cookies.json", platform))
-
-	data, err := json.MarshalIndent(cookies, "", "  ")
-	if err != nil {
-		return fmt.Errorf("序列�?cookie 失败: %w", err)
-	}
-
-	return os.WriteFile(path, data, 0600)
 }
 
-func LoadCookies(platform string) (map[string]string, error) {
-	path := filepath.Join("./cookies", fmt.Sprintf("%s_cookies.json", platform))
+func (j *CookieJar) SetCookies(urlStr string, cookies []*proto.NetworkCookie) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+	if j.cookies[urlStr] == nil {
+		j.cookies[urlStr] = make(map[string]*proto.NetworkCookie)
 	}
 
-	var result map[string]string
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
+	for _, c := range cookies {
+		j.cookies[urlStr][c.Name] = c
+	}
+}
+
+func (j *CookieJar) Cookies(urlStr string) []*proto.NetworkCookie {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+
+	var result []*proto.NetworkCookie
+	if cookies, ok := j.cookies[urlStr]; ok {
+		for _, c := range cookies {
+			result = append(result, c)
+		}
 	}
 
-	return result, nil
+	return result
+}
+
+func (j *CookieJar) Clear() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.cookies = make(map[string]map[string]*proto.NetworkCookie)
+}
+
+type Cookie struct {
+	Name     string
+	Value    string
+	Domain   string
+	Path     string
+	Expires  time.Time
+	Secure   bool
+	HttpOnly bool
 }
