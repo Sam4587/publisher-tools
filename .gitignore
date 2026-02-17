@@ -1,0 +1,71 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+xhs-publisher
+xiaohongshu-publisher/xiaohongshu-publisher
+douyin-toutiao/publisher
+
+# Go
+*.test
+*.out
+vendor/
+
+# Node
+node_modules/
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Cookies data files (sensitive data)
+cookies/*.json
+publisher-core/cookies/*.json
+douyin-toutiao/cookies/*.json
+
+# Data directories (runtime generated)
+data/
+
+# PID and log files
+pids/
+logs/
+
+# Uploads
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Vite
+.vite/
+*.timestamp-*.mjs
+
+# Auto dev server
+.auto-dev-server.json
+
+# IDE tools
+.arts/
+
+# Test files
+test-*.js
+test-*.sh

@@ -1,0 +1,36 @@
+{
+  "name": "auto-dev-server",
+  "version": "1.0.0",
+  "description": "Automated development server launcher for full-stack applications",
+  "main": "src/index.js",
+  "bin": {
+    "auto-dev": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "test": "node test/index.test.js"
+  },
+  "keywords": [
+    "development",
+    "automation",
+    "server",
+    "fullstack",
+    "frontend",
+    "backend"
+  ],
+  "author": "AI Content Flow Team",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cosmiconfig": "^9.0.0",
+    "cross-spawn": "^7.0.3",
+    "moment": "^2.30.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

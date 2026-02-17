@@ -1,0 +1,22 @@
+{
+  "frontend": {
+    "command": "npm run dev",
+    "cwd": ".",
+    "port": 5174,
+    "checkUrl": "http://localhost:5174",
+    "timeout": 30000
+  },
+  "backend": {
+    "command": "node server/server.js",
+    "cwd": "./server",
+    "port": 5001,
+    "checkUrl": "http://localhost:5001/api/monitoring/health",
+    "timeout": 30000
+  },
+  "common": {
+    "logLevel": "info",
+    "autoRestart": true,
+    "restartDelay": 2000,
+    "maxRetries": 3
+  }
+}
