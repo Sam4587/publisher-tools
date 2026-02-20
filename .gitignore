@@ -61,6 +61,10 @@ temp/
 *.tmp
 *.temp
 
+# Backup files
+*.bak
+*~
+
 # Vite
 .vite/
 *.timestamp-*.mjs

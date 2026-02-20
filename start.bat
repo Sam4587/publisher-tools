@@ -20,28 +20,28 @@ call :kill_port 5173
 timeout /t 1 /nobreak >nul
 echo     [OK] Old processes cleaned
 
-REM [2] Start Go backend (run in background)
+REM [2] Start Go backend (run in background, completely hidden)
 echo [2/5] Starting Go backend (port 8080)...
 if exist "bin\publisher-server.exe" (
-    start "Go-Backend" /min cmd /c "cd /d "%~dp0" && bin\publisher-server.exe -port 8080 > logs\go.log 2>&1"
+    wscript //nologo "%~dp0run_hidden.js" "%~dp0" "bin\publisher-server.exe -port 8080" "%~dp0logs\go.log"
     echo     [OK] Go backend started in background
 ) else (
     echo     [WARNING] bin\publisher-server.exe not found, skipping
 )
 
-REM [3] Start Node backend (run in background)
+REM [3] Start Node backend (run in background, completely hidden)
 echo [3/5] Starting Node backend (port 3001)...
 if exist "server\simple-server.js" (
-    start "Node-Backend" /min cmd /c "cd /d "%~dp0server" && node simple-server.js > ..\logs\node.log 2>&1"
+    wscript //nologo "%~dp0run_hidden.js" "%~dp0server" "node simple-server.js" "%~dp0logs\node.log"
     echo     [OK] Node backend started in background
 ) else (
     echo     [WARNING] server\simple-server.js not found, skipping
 )
 
-REM [4] Start frontend (run in background)
+REM [4] Start frontend (run in background, completely hidden)
 echo [4/5] Starting frontend (port 5173)...
 if exist "publisher-web\package.json" (
-    start "Frontend" /min cmd /c "cd /d "%~dp0publisher-web" && npm run dev > ..\logs\frontend.log 2>&1"
+    wscript //nologo "%~dp0run_hidden.js" "%~dp0publisher-web" "npm run dev" "%~dp0logs\frontend.log"
     echo     [OK] Frontend started in background
 ) else (
     echo     [WARNING] publisher-web\package.json not found, skipping
