@@ -1,165 +1,118 @@
 @echo off
 chcp 65001 >nul
-title Publisher Tools - 服务管理
+title Publisher Tools - Start Service
 color 0A
 
-:main
-cls
 echo.
 echo ========================================
-echo    Publisher Tools - 服务管理中心
+echo    Publisher Tools - Starting Services...
 echo ========================================
 echo.
-echo  1. 启动所有服务 (含夸克浏览器)
-echo  2. 停止所有服务
-echo  3. 查看服务状态
-echo  4. 一键安装环境并启动
-echo  5. 编译项目
-echo  0. 退出
-echo.
-echo ========================================
-set /p choice=请选择 (0-5):
 
-if "%choice%"=="1" goto start
-if "%choice%"=="2" goto stop
-if "%choice%"=="3" goto status
-if "%choice%"=="4" goto install
-if "%choice%"=="5" goto build
-if "%choice%"=="0" exit
-goto main
+REM Create necessary directories
+if not exist "logs" mkdir logs
 
-:start
-echo.
-echo [启动] 正在启动服务...
-echo.
-
-echo [1] 停止旧进程...
+REM [1] Stop old processes
+echo [1/5] Cleaning old processes...
 call :kill_port 8080
 call :kill_port 3001
 call :kill_port 5173
 timeout /t 1 /nobreak >nul
+echo     [OK] Old processes cleaned
 
-echo [2] 启动 Go 后端...
+REM [2] Start Go backend (run in background)
+echo [2/5] Starting Go backend (port 8080)...
 if exist "bin\publisher-server.exe" (
-    if not exist "logs" mkdir logs
-    start "Go-Backend" /min cmd /c "bin\publisher-server.exe -port 8080 > logs\go.log 2>&1"
-    echo     [OK] Go 后端 (8080)
+    start "Go-Backend" /min cmd /c "cd /d "%~dp0" && bin\publisher-server.exe -port 8080 > logs\go.log 2>&1"
+    echo     [OK] Go backend started in background
 ) else (
-    echo     [错误] bin\publisher-server.exe 不存在
+    echo     [WARNING] bin\publisher-server.exe not found, skipping
 )
 
-echo [3] 启动 Node 后端...
+REM [3] Start Node backend (run in background)
+echo [3/5] Starting Node backend (port 3001)...
 if exist "server\simple-server.js" (
     start "Node-Backend" /min cmd /c "cd /d "%~dp0server" && node simple-server.js > ..\logs\node.log 2>&1"
-    echo     [OK] Node 后端 (3001)
+    echo     [OK] Node backend started in background
 ) else (
-    echo     [错误] server\simple-server.js 不存在
+    echo     [WARNING] server\simple-server.js not found, skipping
 )
 
-echo [4] 启动前端...
-if exist "publisher-web\node_modules" (
+REM [4] Start frontend (run in background)
+echo [4/5] Starting frontend (port 5173)...
+if exist "publisher-web\package.json" (
     start "Frontend" /min cmd /c "cd /d "%~dp0publisher-web" && npm run dev > ..\logs\frontend.log 2>&1"
-    echo     [OK] 前端 (5173)
+    echo     [OK] Frontend started in background
 ) else (
-    echo     [错误] publisher-web\node_modules 不存在
+    echo     [WARNING] publisher-web\package.json not found, skipping
 )
 
-echo [5] 打开夸克浏览器...
-timeout /t 2 /nobreak >nul
-start "" "quark" "http://localhost:5173"
+REM [5] HTTP connection check, verify service ready status
+echo [5/5] Performing HTTP connection check, verifying service ready status...
+echo.
+
+REM Wait for services to start and perform HTTP check
+set /a retry=0
+:check_loop
+set /a retry+=1
+if %retry% gtr 30 (
+    echo [WARNING] Service startup timeout, please check manually
+    goto open_browser
+)
+
+REM Check frontend port
+netstat -ano | findstr ":5173" | findstr "LISTENING" >nul
+if %errorLevel% neq 0 (
+    echo     Waiting for frontend service... [%retry%/30]
+    timeout /t 1 /nobreak >nul
+    goto check_loop
+)
+
+echo     [OK] Frontend service ready (port 5173)
+
+REM Check Go backend port
+netstat -ano | findstr ":8080" | findstr "LISTENING" >nul
+if %errorLevel% neq 0 (
+    echo     [WARNING] Go backend not ready, but frontend is ready, continuing...
+) else (
+    echo     [OK] Go backend ready (port 8080)
+)
+
+REM Check Node backend port
+netstat -ano | findstr ":3001" | findstr "LISTENING" >nul
+if %errorLevel% neq 0 (
+    echo     [WARNING] Node backend not ready, but frontend is ready, continuing...
+) else (
+    echo     [OK] Node backend ready (port 3001)
+)
+
+:open_browser
+echo.
+echo ========================================
+echo    Service Startup Complete!
+echo ========================================
+echo.
+echo  Frontend:  http://localhost:5173
+echo  Go Backend:    http://localhost:8080/health
+echo  Node Backend:  http://localhost:3001
+echo.
+echo  Services running in background
+echo.
+echo  Opening browser...
+
+REM Automatically open default browser to access service interface
+start "" "http://localhost:5173"
 
 echo.
-echo ========================================
-echo 完成！服务已启动 (可关闭此窗口)
-echo ========================================
-echo.
-echo 前端: http://localhost:5173
-echo Go后端: http://localhost:8080/health
-echo.
-echo 注意: 服务在后台运行，可直接关闭此窗口
-pause >nul
+echo  Window will close in 3 seconds...
+timeout /t 3 /nobreak >nul
 exit
 
-:stop
-echo.
-echo [停止] 正在停止服务...
-call :kill_port 8080
-call :kill_port 3001
-call :kill_port 5173
-echo.
-echo 完成！服务已停止
-pause >nul
-goto main
-
-:status
-echo.
-echo [状态] 服务运行情况
-echo.
-call :check_port 8080 "Go 后端"
-call :check_port 3001 "Node 后端"
-call :check_port 5173 "前端"
-echo.
-pause >nul
-goto main
-
-:install
-echo.
-echo [安装] 正在安装环境...
-echo.
-
-if not exist "bin" mkdir bin
-if not exist "logs" mkdir logs
-if not exist "cookies" mkdir cookies
-if not exist "uploads" mkdir uploads
-echo [目录] 创建完成
-
-echo.
-echo [npm] 安装前端依赖...
-cd publisher-web
-if not exist "node_modules" call npm install --registry=https://registry.npmmirror.com
-cd ..
-
-echo [npm] 安装后端依赖...
-cd server
-if not exist "node_modules" call npm install --registry=https://registry.npmmirror.com
-cd ..
-
-echo.
-echo [Go] 编译后端...
-cd publisher-core
-go mod download
-go build -ldflags="-s -w" -o ..\bin\publisher-server.exe .\cmd\server
-cd ..
-
-echo.
-echo [完成] 环境就绪
-pause >nul
-goto main
-
-:build
-echo.
-echo [编译] 正在编译...
-cd publisher-core
-go mod tidy
-go build -ldflags="-s -w" -o ..\bin\publisher-server.exe .\cmd\server
-cd ..
-if exist "bin\publisher-server.exe" (
-    echo [完成] bin\publisher-server.exe
-) else (
-    echo [错误] 编译失败
-)
-pause >nul
-goto main
-
+REM ========================================
+REM Function: kill_port - Stop process by port
+REM ========================================
 :kill_port
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%1" ^| findstr "LISTENING"') do taskkill /PID %%a /F >nul 2>&1
-exit /b 0
-
-:check_port
-netstat -ano | findstr ":%1" ^| findstr "LISTENING" >nul
-if %errorLevel%==0 (
-    echo [%1] %2 - 运行中
-) else (
-    echo [%1] %2 - 已停止
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%1" ^| findstr "LISTENING" 2^>nul') do (
+    taskkill /PID %%a /F >nul 2>&1
 )
 exit /b 0

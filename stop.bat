@@ -1,71 +1,65 @@
 @echo off
 chcp 65001 >nul
+title Publisher Tools - Stop Service
+color 0C
+
+echo.
 echo ========================================
-echo Publisher Tools - 服务停止脚本
+echo    Publisher Tools - Stopping Services...
 echo ========================================
 echo.
 
-echo [信息] 正在停止所有服务...
-echo.
-
-REM 停止 Go 后端
-echo [1/3] 停止 Go 后端...
-for /f "tokens=2" %%a in ('tasklist /fi "windowtitle eq Publisher-Go-Backend*" /fo list ^| findstr "PID:"') do (
-    taskkill /PID %%a /F >nul 2>&1
-    echo [成功] Go 后端已停止
-)
-if not errorlevel 1 if not errorlevel 0 echo [信息] Go 后端未运行
-
-REM 停止 Node 后端
-echo [2/3] 停止 Node 后端...
-for /f "tokens=2" %%a in ('tasklist /fi "windowtitle eq Publisher-Node-Backend*" /fo list ^| findstr "PID:"') do (
-    taskkill /PID %%a /F >nul 2>&1
-    echo [成功] Node 后端已停止
-)
-if not errorlevel 1 if not errorlevel 0 echo [信息] Node 后端未运行
-
-REM 停止前端
-echo [3/3] 停止前端...
-for /f "tokens=2" %%a in ('tasklist /fi "windowtitle eq Publisher-Frontend*" /fo list ^| findstr "PID:"') do (
-    taskkill /PID %%a /F >nul 2>&1
-    echo [成功] 前端已停止
-)
-if not errorlevel 1 if not errorlevel 0 echo [信息] 前端未运行
-
-REM 根据端口查找并停止进程
-echo.
-echo [检查] 根据端口查找进程...
-
-REM 检查端口 8080
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8080" ^| findstr "LISTENING"') do (
-    echo [信息] 发现端口 8080 被进程 %%a 占用
-    taskkill /PID %%a /F >nul 2>&1
-    echo [成功] 已停止进程 %%a
+REM [1] Stop Go backend
+echo [1/3] Stopping Go backend (port 8080)...
+call :kill_port 8080
+if %errorLevel% equ 0 (
+    echo     [OK] Port 8080 cleaned
+) else (
+    echo     [INFO] Port 8080 not in use
 )
 
-REM 检查端口 3001
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3001" ^| findstr "LISTENING"') do (
-    echo [信息] 发现端口 3001 被进程 %%a 占用
-    taskkill /PID %%a /F >nul 2>&1
-    echo [成功] 已停止进程 %%a
+REM [2] Stop Node backend
+echo [2/3] Stopping Node backend (port 3001)...
+call :kill_port 3001
+if %errorLevel% equ 0 (
+    echo     [OK] Port 3001 cleaned
+) else (
+    echo     [INFO] Port 3001 not in use
 )
 
-REM 检查端口 5173
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5173" ^| findstr "LISTENING"') do (
-    echo [信息] 发现端口 5173 被进程 %%a 占用
-    taskkill /PID %%a /F >nul 2>&1
-    echo [成功] 已停止进程 %%a
+REM [3] Stop frontend
+echo [3/3] Stopping frontend (port 5173)...
+call :kill_port 5173
+if %errorLevel% equ 0 (
+    echo     [OK] Port 5173 cleaned
+) else (
+    echo     [INFO] Port 5173 not in use
 )
 
-REM 删除 PID 文件
+REM Clean PID files
 if exist "pids\services.pid" (
-    del /f /q "pids\services.pid"
-    echo [信息] PID 文件已删除
+    del /f /q "pids\services.pid" >nul 2>&1
+    echo.
+    echo [INFO] PID files cleaned
 )
 
 echo.
 echo ========================================
-echo [完成] 所有服务已停止
-========================================
+echo    All Services Stopped
+echo ========================================
 echo.
-pause
+echo  Window will close in 2 seconds...
+timeout /t 2 /nobreak >nul
+exit
+
+REM ========================================
+REM Function: kill_port - Stop process by port
+REM ========================================
+:kill_port
+setlocal enabledelayedexpansion
+set "found=0"
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%1" ^| findstr "LISTENING" 2^>nul') do (
+    taskkill /PID %%a /F >nul 2>&1
+    set "found=1"
+)
+endlocal & exit /b %found%
