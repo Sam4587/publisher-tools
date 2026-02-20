@@ -88,7 +88,30 @@ Publisher Tools 是一个支持多平台内容发布的自动化系统，从 Tre
 - **Node.js** 18+
 - **Chrome/Chromium** - 浏览器自动化
 
-### 方式一：直接运行（推荐开发环境）
+### 方式一：智能一键启动（推荐开发环境）⭐
+
+```bash
+# Windows 系统 - 双击运行以下批处理文件
+
+# 1. 环境检查（首次使用推荐）
+verify-environment.bat
+
+# 2. 启动所有服务
+start-enhanced.bat
+
+# 3. 停止所有服务
+stop-enhanced.bat
+```
+
+**智能启动特性**：
+- 🔄 自动检测环境依赖（Node.js、Go、npm）
+- 🏗️ 自动编译后端服务和安装前端依赖
+- 📊 智能服务健康检测（HTTP轮询验证）
+- 🌐 浏览器智能启动（夸克→Chrome→Edge→默认）
+- 📝 完善的日志记录和PID进程管理
+- 🛡️ 详细的错误分类和解决建议
+
+### 方式二：传统命令行启动
 
 ```bash
 # 1. 克隆项目
@@ -104,11 +127,13 @@ make dev
 
 ### 服务端口说明
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| 前端开发服务器 | 5173+ | Vite自动寻找可用端口 |
-| 测试API服务器 | 3001 | 用于前端开发测试 |
-| Go后端服务 | 8080 | 生产环境后端服务 |
+| 启动方式 | 服务 | 端口 | 说明 |
+|----------|------|------|------|
+| 智能启动 | 前端界面 | 5173 | Vite开发服务器 |
+| 智能启动 | 后端API | 8080 | Go后端服务 |
+| 传统启动 | 前端开发服务器 | 5173+ | Vite自动寻找可用端口 |
+| 传统启动 | 测试API服务器 | 3001 | 用于前端开发测试 |
+| 传统启动 | Go后端服务 | 8080 | 生产环境后端服务 |
 
 访问：
 - **前端**: http://localhost:5173（或Vite自动分配的端口）
@@ -487,6 +512,20 @@ make restart
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
+
+## 📚 相关文档
+
+### 智能启动系统
+- [智能启动使用指南](./docs/guides/platform-setup/smart-launcher-guide.md) - 详细的使用说明和故障排除
+- `start-enhanced.bat` - 智能启动脚本
+- `stop-enhanced.bat` - 智能停止脚本
+- `verify-environment.bat` - 环境验证工具
+
+### 开发文档
+- [平台配置指南](./docs/guides/platform-setup/README.md) - 平台账号配置说明
+- [API接口文档](./docs/api/rest-api.md) - RESTful API 详细说明
+- [开发者指南](./docs/development/developer-guide.md) - 开发环境配置
+- [架构设计文档](./docs/architecture/) - 系统架构说明
 
 ---
 

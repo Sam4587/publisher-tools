@@ -2,6 +2,25 @@
 
 欢迎来到 Publisher Tools 文档中心！这里是项目所有文档的统一入口和导航中心。
 
+## 🎯 快速导航
+
+### 新用户和 AI 助手
+**👉 [项目架构统一实施方案](./project-architecture-unified-implementation.md)** - 统一规划中心（推荐首先阅读）
+
+本文档整合了当前项目架构分析和四个借鉴项目，提供了完整的实施方案和开发路线图。
+
+### 核心开发文档
+- **[AI 服务开发指南](./ai-service-development-guide.md)** - 统一的 AI 服务开发权威文档
+  - 20+ 免费 AI 资源汇总
+  - LiteLLM 统一接口方案
+  - 开发进度记录（AI 助手协作）
+- **[热点监控借鉴文档](./hot-topics-reference.md)** - TrendRadar 项目分析
+- **[热点监控路线图](./hot-topics-roadmap.md)** - 功能增强开发计划
+- **[Huobao Drama 项目分析](./huobao-drama-analysis.md)** - AI 短剧生成平台深度分析
+- **[智能启动系统实施报告](./SMART_LAUNCHER_IMPLEMENTATION_REPORT.md)** - 智能启动系统实施报告
+
+---
+
 ## 📚 文档分类导航
 
 ### [📖 系统架构](./architecture/)
@@ -31,6 +50,10 @@
 - [任务管理](./modules/task/) - 异步任务处理和状态追踪
 - [热点监控](./modules/hotspot/) - 实时热点抓取和分析
 - [AI服务](./modules/ai/) - 多提供商AI集成和服务管理
+  - **[AI服务开发指南](./ai-service-development-guide.md)** - 统一的AI服务开发权威文档
+  - 免费AI资源汇总（20+提供商）
+  - LiteLLM统一接口方案
+  - 开发进度记录（AI助手协作）
 - [文件存储](./modules/storage/) - 统一文件存储抽象层
 - [数据分析](./modules/analytics/) - 数据采集、分析和报告
 
@@ -55,6 +78,12 @@
 - [配置参数说明](./reference/configuration/) - 环境变量和配置文件详解
 - [版本变更记录](./reference/changelog/) - 版本更新和功能变更（规划中）
 - [常见问题解答](./reference/faq/) - FAQ和问题解决方案（规划中）
+- [热点监控借鉴](./hot-topics-reference.md) - TrendRadar项目分析和整合建议
+- [热点监控路线图](./hot-topics-roadmap.md) - 功能增强开发计划
+- [Huobao Drama分析](./huobao-drama-analysis.md) - AI短剧生成平台深度分析
+- **[AI服务开发指南](./ai-service-development-guide.md)** - 统一的AI服务开发权威文档
+- **[项目架构统一实施方案](./project-architecture-unified-implementation.md)** - 统一规划中心（推荐）
+- [项目架构优化文档](./project-architecture-optimization.md) - 项目架构优化规划
 
 ### [🤖 AI任务管理](./ai-tasks/)
 AI开发者专项任务跟踪和管理系统。
