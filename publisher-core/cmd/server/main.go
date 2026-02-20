@@ -90,6 +90,10 @@ func main() {
 
 	hotspotService.RegisterSource(sources.NewMockSource("mock", "Test Source"))
 
+	// 注册热点监控API路由
+	hotspotAPI := hotspot.NewAPIHandler(hotspotService)
+	server.RegisterRoutes(hotspotAPI)
+
 	analyticsStorage, err := analytics.NewJSONStorage(dataDir + "/analytics")
 	if err != nil {
 		logrus.Warnf("Failed to create analytics storage: %v", err)

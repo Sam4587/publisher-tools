@@ -19,6 +19,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
 
 # Build
 dist/
@@ -38,6 +40,9 @@ douyin-toutiao/cookies/*.json
 
 # Data directories (runtime generated)
 data/
+*.db
+*.sqlite
+*.sqlite3
 
 # PID and log files
 pids/
@@ -69,3 +74,17 @@ temp/
 # Test files
 test-*.js
 test-*.sh
+
+# Sensitive files - API keys, secrets, credentials
+**/secrets/
+**/credentials/
+*.pem
+*.key
+*.crt
+secrets.json
+credentials.json
+api_keys.json
+
+# Database files
+publisher.db
+*.db-journal

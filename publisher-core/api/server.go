@@ -45,6 +45,11 @@ type StorageAPI interface {
 
 type Middleware func(http.Handler) http.Handler
 
+// RouteRegistrar 接口用于注册自定义路由
+type RouteRegistrar interface {
+	RegisterRoutes(router *mux.Router)
+}
+
 func NewServer(taskManager TaskManagerAPI, publisher PublisherAPI, storage StorageAPI, ai AIServiceAPI) *Server {
 	s := &Server{
 		router:      mux.NewRouter(),
@@ -92,6 +97,11 @@ func (s *Server) setupRoutes() {
 
 	fs := http.FileServer(http.Dir("static"))
 	s.router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
+}
+
+// RegisterRoutes 注册额外的路由
+func (s *Server) RegisterRoutes(registrar RouteRegistrar) {
+	registrar.RegisterRoutes(s.router)
 }
 
 func (s *Server) Start(addr string) error {
