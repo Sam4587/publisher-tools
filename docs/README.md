@@ -5,19 +5,17 @@
 ## 🎯 快速导航
 
 ### 新用户和 AI 助手
-**👉 [项目架构统一实施方案](./project-architecture-unified-implementation.md)** - 统一规划中心（推荐首先阅读）
+**👉 [项目总结](./PROJECT_SUMMARY.md)** - 项目概览和核心功能介绍（推荐首先阅读）
 
-本文档整合了当前项目架构分析和四个借鉴项目，提供了完整的实施方案和开发路线图。
+**👉 [用户手册](./USER_MANUAL.md)** - 完整的用户操作指南
 
 ### 核心开发文档
 - **[AI 服务开发指南](./ai-service-development-guide.md)** - 统一的 AI 服务开发权威文档
   - 20+ 免费 AI 资源汇总
   - LiteLLM 统一接口方案
   - 开发进度记录（AI 助手协作）
-- **[热点监控借鉴文档](./hot-topics-reference.md)** - TrendRadar 项目分析
-- **[热点监控路线图](./hot-topics-roadmap.md)** - 功能增强开发计划
-- **[Huobao Drama 项目分析](./huobao-drama-analysis.md)** - AI 短剧生成平台深度分析
-- **[智能启动系统实施报告](./SMART_LAUNCHER_IMPLEMENTATION_REPORT.md)** - 智能启动系统实施报告
+- **[部署指南](./DEPLOYMENT_GUIDE.md)** - 完整的部署配置说明
+- **[CGO 配置指南](./CGO_SETUP_GUIDE.md)** - CGO 环境配置和测试
 
 ---
 
@@ -31,15 +29,11 @@
 - [数据流图](./architecture/data-flow/) - 数据流转和处理逻辑
 - [部署架构](./architecture/deployment/) - 部署方案和环境配置
 
-### [👨‍💻 开发者指南](./development/developer-guide.md)
+### [👨‍💻 开发者指南](./development/)
 为开发者提供的完整开发环境搭建和编码指导。
 
-- [环境搭建](./development/development-plan.md#环境搭建) - 开发环境配置
-- [编码规范](./development/development-plan.md#编码规范) - 代码质量和风格要求
-- [开发流程](./development/development-plan.md#开发流程) - 标准开发工作流
-- [调试技巧](./development/development-plan.md#调试技巧) - 问题排查和调试方法
-- [测试指南](./development/development-plan.md#测试指南) - 单元测试和集成测试
-- [提交规范](./development/development-plan.md#提交规范) - Git提交和分支管理
+- [开发者指南](./development/developer-guide.md) - 完整开发文档
+- [开发计划](./development/README.md) - 开发计划和流程
 
 ### [🧩 功能模块](./modules/)
 各功能模块的详细技术文档和使用说明。
@@ -50,10 +44,6 @@
 - [任务管理](./modules/task/) - 异步任务处理和状态追踪
 - [热点监控](./modules/hotspot/) - 实时热点抓取和分析
 - [AI服务](./modules/ai/) - 多提供商AI集成和服务管理
-  - **[AI服务开发指南](./ai-service-development-guide.md)** - 统一的AI服务开发权威文档
-  - 免费AI资源汇总（20+提供商）
-  - LiteLLM统一接口方案
-  - 开发进度记录（AI助手协作）
 - [文件存储](./modules/storage/) - 统一文件存储抽象层
 - [数据分析](./modules/analytics/) - 数据采集、分析和报告
 
@@ -78,12 +68,6 @@
 - [配置参数说明](./reference/configuration/) - 环境变量和配置文件详解
 - [版本变更记录](./reference/changelog/) - 版本更新和功能变更（规划中）
 - [常见问题解答](./reference/faq/) - FAQ和问题解决方案（规划中）
-- [热点监控借鉴](./hot-topics-reference.md) - TrendRadar项目分析和整合建议
-- [热点监控路线图](./hot-topics-roadmap.md) - 功能增强开发计划
-- [Huobao Drama分析](./huobao-drama-analysis.md) - AI短剧生成平台深度分析
-- **[AI服务开发指南](./ai-service-development-guide.md)** - 统一的AI服务开发权威文档
-- **[项目架构统一实施方案](./project-architecture-unified-implementation.md)** - 统一规划中心（推荐）
-- [项目架构优化文档](./project-architecture-optimization.md) - 项目架构优化规划
 
 ### [🤖 AI任务管理](./ai-tasks/)
 AI开发者专项任务跟踪和管理系统。
@@ -92,21 +76,33 @@ AI开发者专项任务跟踪和管理系统。
 - [任务状态跟踪](./ai-tasks/ai-task-checklist.md#任务跟踪矩阵) - 实时任务进度监控
 - [质量保证机制](./ai-tasks/ai-task-checklist.md#质量保证机制) - 任务验收标准
 
-- [废弃路由文档](./archive/deprecated-routes/) - 旧版Node.js路由实现
-- [历史版本文档](./archive/v1.0/) - 版本1.0相关文档（如有）
+### [📦 文档模板](./templates/)
+标准文档模板，用于创建新文档。
+
+- [指南模板](./templates/guide-template.md) - 操作指南文档模板
+- [计划模板](./templates/plan-template.md) - 计划文档模板
+- [规范模板](./templates/spec-template.md) - 规范文档模板
+
+### [📁 归档文档](./archive/)
+历史文档和临时报告归档。
+
+- [文档管理报告](./archive/reports/) - 文档整理和管理相关报告
+- [项目分析文档](./archive/project-analysis/) - 借鉴项目分析和架构方案
+- [实施报告](./archive/implementation-reports/) - 功能实施和测试报告
+- [废弃路由](./archive/deprecated-routes/) - 旧版Node.js路由实现
 
 ## 🚀 快速开始
 
 如果你是新用户，建议按以下顺序阅读：
 
-1. **[快速入门](./getting-started.md)** - 项目概览和基本使用
-2. **[平台配置指南](./guides/platform-setup/)** - 配置第一个平台账号
-3. **[内容发布指南](./guides/content-publish/)** - 学习基本发布操作
-4. **[开发环境搭建](./development/development-plan.md#环境搭建)** - 如需二次开发
+1. **[项目总结](./PROJECT_SUMMARY.md)** - 项目概览和基本使用
+2. **[用户手册](./USER_MANUAL.md)** - 学习基本操作
+3. **[平台配置指南](./guides/platform-setup/)** - 配置第一个平台账号
+4. **[部署指南](./DEPLOYMENT_GUIDE.md)** - 如需部署到服务器
 
 如果你是开发者：
 
-1. **[开发计划](./development/development-plan.md)** - 完整的开发环境搭建
+1. **[开发者指南](./development/developer-guide.md)** - 完整的开发环境搭建
 2. **[架构文档](./architecture/)** - 理解系统设计原理
 3. **[API文档](./api/)** - 接口集成和扩展开发
 4. **[模块文档](./modules/)** - 深入了解具体功能实现
@@ -115,7 +111,7 @@ AI开发者专项任务跟踪和管理系统。
 
 - **版本**: v1.0.0
 - **状态**: ✅ 稳定可用
-- **最近更新**: 2026-02-19
+- **最近更新**: 2026-02-20
 - **支持平台**: 抖音、今日头条、小红书
 
 ## 🔧 技术栈
@@ -144,6 +140,7 @@ AI开发者专项任务跟踪和管理系统。
 
 文档会随着项目版本同步更新，主要更新记录：
 
+- **2026-02-20**: 完成文档整理和归档，优化文档结构
 - **2026-02-19**: 完成文档系统重构和结构优化
 - **2026-02-17**: 添加一键发布功能文档
 - **2026-01-15**: 完成多平台适配器文档
@@ -151,6 +148,6 @@ AI开发者专项任务跟踪和管理系统。
 
 ---
 
-**最后更新**: 2026-02-19  
-**维护团队**: MonkeyCode Team  
+**最后更新**: 2026-02-20
+**维护团队**: MonkeyCode Team
 **许可证**: MIT

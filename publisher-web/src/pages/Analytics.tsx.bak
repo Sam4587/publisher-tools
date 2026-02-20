@@ -16,7 +16,7 @@ interface DashboardStats {
   platform_stats: PlatformStats[]
   recent_posts: PostMetrics[]
   top_performing: PostMetrics[]
-  growth_trend: TrendDataPoint[]
+  growth_trend: TrendData[]
 }
 
 interface PlatformStats {
@@ -39,7 +39,7 @@ interface PostMetrics {
   engagement: number
 }
 
-interface TrendDataPoint {
+interface TrendData {
   date: string
   value: number
 }
@@ -276,24 +276,6 @@ export default function Analytics() {
           )}
         </CardContent>
       </Card>
-n        {/* 新增: 趋势图表 */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <HotspotTrendChart
-            data={stats?.growth_trend?.map(t => ({ date: t.date, value: t.value })) || []}
-            title="互动趋势"
-            description="近7天数据变化趋势"
-          />
-          <RankTimelineChart
-            data={stats?.recent_posts?.map((post, index) => ({
-              date: new Date().toISOString().split('T')[0],
-              rank: index + 1,
-              topicId: post.post_id,
-              topicTitle: post.title,
-            })) || []}
-            title="内容排名"
-            description="最近发布内容的排名变化"
-          />
-        </div>
     </div>
   )
 }
