@@ -105,6 +105,21 @@ func autoMigrate(db *gorm.DB) error {
 		&Cookie{},
 		// AI 历史记录
 		&AIHistory{},
+		// AI 提示词模板
+		&PromptTemplate{},
+		&PromptTemplateVersion{},
+		&PromptTemplateABTest{},
+		&PromptTemplateUsage{},
+		// AI 成本追踪
+		&AICostRecord{},
+		&AIBudget{},
+		&AICostAlert{},
+		&AIModelPricing{},
+		// 异步任务系统
+		&AsyncTask{},
+		&TaskQueue{},
+		&TaskExecution{},
+		&ScheduledTask{},
 	)
 }
 
