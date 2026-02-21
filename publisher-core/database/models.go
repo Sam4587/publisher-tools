@@ -785,3 +785,28 @@ func (AccountPoolMember) TableName() string {
 	return "account_pool_members"
 }
 
+// =====================================================
+// 用户管理模型
+// =====================================================
+
+// User 用户
+type User struct {
+	ID            uint           `gorm:"primaryKey" json:"id"`
+	UserID        string         `gorm:"uniqueIndex;size:100;not null" json:"user_id"`
+	Username      string         `gorm:"uniqueIndex;size:100;not null" json:"username"`
+	Email         string         `gorm:"size:200" json:"email"`
+	PasswordHash  string         `gorm:"size:200" json:"-"` // 不序列化
+	Role          string         `gorm:"size:20;default:user" json:"role"` // user, admin
+	APIKey        string         `gorm:"uniqueIndex;size:100" json:"api_key"`
+	IsActive      bool           `gorm:"default:true" json:"is_active"`
+	LastLoginAt   *time.Time     `json:"last_login_at"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// TableName 指定表名
+func (User) TableName() string {
+	return "users"
+}
+
