@@ -441,6 +441,25 @@ type NotificationConfig struct {
 	Channels   []string `json:"channels"`
 }
 
+// RetryStrategy 重试策略
+type RetryStrategy struct {
+	Type          RetryType     `json:"type"`
+	InitialDelay  time.Duration `json:"initial_delay"`
+	MaxDelay      time.Duration `json:"max_delay"`
+	BackoffFactor float64       `json:"backoff_factor"`
+	MaxRetries    int           `json:"max_retries"`
+}
+
+// RetryType 重试类型
+type RetryType string
+
+const (
+	RetryTypeNone        RetryType = "none"
+	RetryTypeFixed       RetryType = "fixed"
+	RetryTypeLinear      RetryType = "linear"
+	RetryTypeExponential RetryType = "exponential"
+)
+
 // PipelineStatus 流水线状态
 type PipelineStatus string
 

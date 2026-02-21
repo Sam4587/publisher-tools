@@ -615,3 +615,173 @@ func (WebSocketSession) TableName() string {
 	return "websocket_sessions"
 }
 
+// =====================================================
+// 流水线系统模型
+// =====================================================
+
+// PipelineDefinition 流水线定义
+type PipelineDefinition struct {
+	ID          string    `gorm:"primaryKey;size:100" json:"id"`
+	Name        string    `gorm:"size:200;not null" json:"name"`
+	Description string    `gorm:"type:text" json:"description"`
+	Steps       string    `gorm:"type:text;not null" json:"steps"`       // JSON格式的步骤定义
+	Config      string    `gorm:"type:text" json:"config"`               // JSON格式的配置
+	IsActive    bool      `gorm:"default:true;index" json:"is_active"`
+	IsSystem    bool      `gorm:"default:false" json:"is_system"`        // 是否系统模板
+	Version     int       `gorm:"default:1" json:"version"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName 指定表名
+func (PipelineDefinition) TableName() string {
+	return "pipeline_definitions"
+}
+
+// PipelineExecutionRecord 流水线执行记录
+type PipelineExecutionRecord struct {
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	ExecutionID  string     `gorm:"uniqueIndex;size:100;not null" json:"execution_id"`
+	PipelineID   string     `gorm:"index;size:100;not null" json:"pipeline_id"`
+	Status       string     `gorm:"size:20;not null;index" json:"status"` // pending, running, completed, failed, paused, cancelled
+	Input        string     `gorm:"type:text" json:"input"`               // JSON格式的输入
+	Output       string     `gorm:"type:text" json:"output"`              // JSON格式的输出
+	Steps        string     `gorm:"type:text" json:"steps"`               // JSON格式的步骤执行状态
+	Error        string     `gorm:"type:text" json:"error"`
+	StartedAt    time.Time  `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at"`
+	DurationMs   int        `json:"duration_ms"`                          // 执行时长（毫秒）
+	UserID       string     `gorm:"size:100;index" json:"user_id"`
+	ProjectID    string     `gorm:"size:100;index" json:"project_id"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+// TableName 指定表名
+func (PipelineExecutionRecord) TableName() string {
+	return "pipeline_execution_records"
+}
+
+// PipelineStepExecution 流水线步骤执行记录
+type PipelineStepExecution struct {
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	ExecutionID  string     `gorm:"index;size:100;not null" json:"execution_id"`
+	StepID       string     `gorm:"size:100;not null" json:"step_id"`
+	StepName     string     `gorm:"size:200" json:"step_name"`
+	Handler      string     `gorm:"size:100" json:"handler"`
+	Status       string     `gorm:"size:20;not null;index" json:"status"` // pending, running, completed, failed, skipped
+	Input        string     `gorm:"type:text" json:"input"`
+	Output       string     `gorm:"type:text" json:"output"`
+	Error        string     `gorm:"type:text" json:"error"`
+	Progress     int        `gorm:"default:0" json:"progress"`            // 进度百分比
+	RetryCount   int        `gorm:"default:0" json:"retry_count"`
+	DurationMs   int        `json:"duration_ms"`
+	StartedAt    time.Time  `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+// TableName 指定表名
+func (PipelineStepExecution) TableName() string {
+	return "pipeline_step_executions"
+}
+
+// =====================================================
+// 账号管理系统模型
+// =====================================================
+
+// AccountStatus 账号状态
+type AccountStatus string
+
+const (
+	AccountStatusActive   AccountStatus = "active"   // 活跃
+	AccountStatusInactive AccountStatus = "inactive" // 不活跃
+	AccountStatusExpired  AccountStatus = "expired"  // 已过期
+	AccountStatusBanned   AccountStatus = "banned"   // 已封禁
+	AccountStatusPending  AccountStatus = "pending"  // 待验证
+)
+
+// PlatformAccount 平台账号
+type PlatformAccount struct {
+	ID           uint          `gorm:"primaryKey" json:"id"`
+	AccountID    string        `gorm:"uniqueIndex;size:100;not null" json:"account_id"` // 唯一账号ID
+	Platform     string        `gorm:"index;size:50;not null" json:"platform"`          // 平台：douyin, toutiao, xiaohongshu, bilibili
+	AccountName  string        `gorm:"size:200" json:"account_name"`                    // 账号名称
+	AccountType  string        `gorm:"size:20;default:personal" json:"account_type"`    // 账号类型：personal, business
+	CookieData   string        `gorm:"type:text" json:"-"`                              // 加密的Cookie数据
+	CookieHash   string        `gorm:"size:64" json:"cookie_hash"`                      // Cookie哈希（用于检测变化）
+	Status       AccountStatus `gorm:"size:20;default:pending;index" json:"status"`
+	Priority     int           `gorm:"default:5" json:"priority"`                       // 优先级（1-10，数字越大优先级越高）
+	LastUsedAt   *time.Time    `json:"last_used_at"`
+	LastCheckAt  *time.Time    `json:"last_check_at"`
+	ExpiresAt    *time.Time    `json:"expires_at"`
+	UseCount     int           `gorm:"default:0" json:"use_count"`                      // 使用次数
+	SuccessCount int           `gorm:"default:0" json:"success_count"`                  // 成功次数
+	FailCount    int           `gorm:"default:0" json:"fail_count"`                     // 失败次数
+	LastError    string        `gorm:"type:text" json:"last_error"`
+	Tags         string        `gorm:"type:text" json:"tags"`                           // JSON格式的标签
+	Metadata     string        `gorm:"type:text" json:"metadata"`                       // JSON格式的元数据
+	UserID       string        `gorm:"size:100;index" json:"user_id"`                   // 所属用户
+	ProjectID    string        `gorm:"size:100;index" json:"project_id"`                // 所属项目
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
+}
+
+// TableName 指定表名
+func (PlatformAccount) TableName() string {
+	return "platform_accounts"
+}
+
+// AccountUsageLog 账号使用日志
+type AccountUsageLog struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	AccountID   string    `gorm:"index;size:100;not null" json:"account_id"`
+	Action      string    `gorm:"size:50;not null" json:"action"`        // 操作类型：login, publish, check
+	Success     bool      `gorm:"default:false;index" json:"success"`
+	Error       string    `gorm:"type:text" json:"error"`
+	DurationMs  int       `json:"duration_ms"`                          // 执行时长（毫秒）
+	IPAddress   string    `gorm:"size:50" json:"ip_address"`
+	UserAgent   string    `gorm:"size:500" json:"user_agent"`
+	TaskID      string    `gorm:"size:100;index" json:"task_id"`        // 关联的任务ID
+	Metadata    string    `gorm:"type:text" json:"metadata"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// TableName 指定表名
+func (AccountUsageLog) TableName() string {
+	return "account_usage_logs"
+}
+
+// AccountPool 账号池
+type AccountPool struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	PoolID      string    `gorm:"uniqueIndex;size:100;not null" json:"pool_id"`
+	Name        string    `gorm:"size:200;not null" json:"name"`
+	Platform    string    `gorm:"size:50;not null;index" json:"platform"`
+	Description string    `gorm:"type:text" json:"description"`
+	Strategy    string    `gorm:"size:20;default:round_robin" json:"strategy"` // 负载均衡策略：round_robin, random, priority, least_used
+	MaxSize     int       `gorm:"default:10" json:"max_size"`
+	IsActive    bool      `gorm:"default:true;index" json:"is_active"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName 指定表名
+func (AccountPool) TableName() string {
+	return "account_pools"
+}
+
+// AccountPoolMember 账号池成员
+type AccountPoolMember struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	PoolID    string    `gorm:"index;size:100;not null" json:"pool_id"`
+	AccountID string    `gorm:"index;size:100;not null" json:"account_id"`
+	Priority  int       `gorm:"default:5" json:"priority"`
+	IsActive  bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// TableName 指定表名
+func (AccountPoolMember) TableName() string {
+	return "account_pool_members"
+}
+

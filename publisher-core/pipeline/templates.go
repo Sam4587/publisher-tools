@@ -1,7 +1,10 @@
 // Package pipeline 提供预定义流水线模板
 package pipeline
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // ContentPublishPipeline 内容发布流水线模板
 func ContentPublishPipeline() *Pipeline {
