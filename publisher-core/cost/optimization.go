@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"publisher-tools/database"
+	"publisher-core/database"
 
 	"gorm.io/gorm"
 )

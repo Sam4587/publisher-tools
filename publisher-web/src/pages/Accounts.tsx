@@ -9,12 +9,14 @@ const platformNames: Record<Platform, string> = {
   douyin: "抖音",
   toutiao: "今日头条",
   xiaohongshu: "小红书",
+  bilibili: "B站",
 }
 
 const platformDescriptions: Record<Platform, string> = {
   douyin: "短视频平台，适合发布视频和图文内容",
   toutiao: "新闻资讯平台，适合发布文章和视频",
   xiaohongshu: "生活方式平台，适合发布图文笔记",
+  bilibili: "视频弹幕网站，适合发布中长视频内容",
 }
 
 export default function Accounts() {
@@ -23,6 +25,7 @@ export default function Accounts() {
     douyin: null,
     toutiao: null,
     xiaohongshu: null,
+    bilibili: null,
   })
   const [_loading, _setLoading] = useState(true)
   const [loginning, setLoginning] = useState<Platform | null>(null)
@@ -33,7 +36,7 @@ export default function Accounts() {
       try {
         const response = await getPlatforms()
         if (response.success && response.data) {
-          const platformList = response.data.platforms as Platform[]
+          const platformList = Array.isArray(response.data) ? response.data as Platform[] : (response.data as any).platforms as Platform[]
           setPlatforms(platformList)
           await checkAllStatuses(platformList)
         }

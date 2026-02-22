@@ -107,7 +107,7 @@ func (p *OpenRouterProvider) Generate(ctx context.Context, opts *GenerateOptions
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
-	httpReq.Header.Set("HTTP-Referer", "https://publisher-tools.local")
+	httpReq.Header.Set("HTTP-Referer", "https://publisher-core.local")
 	httpReq.Header.Set("X-Title", "Publisher Tools")
 
 	client := &http.Client{Timeout: 120 * time.Second}
@@ -169,7 +169,7 @@ func (p *OpenRouterProvider) GenerateStream(ctx context.Context, opts *GenerateO
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
-	httpReq.Header.Set("HTTP-Referer", "https://publisher-tools.local")
+	httpReq.Header.Set("HTTP-Referer", "https://publisher-core.local")
 	httpReq.Header.Set("X-Title", "Publisher Tools")
 
 	client := &http.Client{Timeout: 300 * time.Second}

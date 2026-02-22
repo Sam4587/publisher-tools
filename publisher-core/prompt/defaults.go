@@ -3,7 +3,7 @@ package prompt
 import (
 	"encoding/json"
 	"log"
-	"publisher-tools/database"
+	"publisher-core/database"
 	"time"
 )
 

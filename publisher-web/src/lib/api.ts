@@ -1,6 +1,7 @@
 import type { Platform, PlatformInfo, LoginResult, PublishResult, Task, AccountStatus, APIResponse, PublishContent, HotTopic, HotSource, Pagination, CrossPlatformAnalysis, AIAnalysisResult } from '@/types/api'
 
 const API_BASE = '/api/v1'
+const PUBLISHER_API_BASE = '/api/v1/publisher'
 const HOT_API_BASE = '/api/hot-topics'
 
 // 平台列表响应类型
@@ -24,25 +25,36 @@ async function request<T>(url: string, options?: RequestInit): Promise<APIRespon
 }
 
 // 获取平台列表
-export async function getPlatforms(): Promise<APIResponse<PlatformsResponse>> {
-  return request<PlatformsResponse>(`${API_BASE}/platforms`)
+export async function getPlatforms(): Promise<APIResponse<Platform[]>> {
+  const response = await fetch(`${PUBLISHER_API_BASE}/platforms`)
+  const data = await response.json()
+  // 处理不同的响应格式
+  if (data.success && data.data) {
+    if (Array.isArray(data.data)) {
+      return { success: true, data: data.data as Platform[] }
+    }
+    if (data.data.platforms) {
+      return { success: true, data: data.data.platforms as Platform[] }
+    }
+  }
+  return data as APIResponse<Platform[]>
 }
 
 // 获取平台信息
 export async function getPlatformInfo(platform: Platform): Promise<APIResponse<PlatformInfo>> {
-  return request<PlatformInfo>(`${API_BASE}/platforms/${platform}`)
+  return request<PlatformInfo>(`${PUBLISHER_API_BASE}/platforms/${platform}`)
 }
 
 // 登录
 export async function login(platform: Platform): Promise<APIResponse<LoginResult>> {
-  return request<LoginResult>(`${API_BASE}/platforms/${platform}/login`, {
+  return request<LoginResult>(`${PUBLISHER_API_BASE}/platforms/${platform}/login`, {
     method: 'POST',
   })
 }
 
 // 检查登录状态
 export async function checkLogin(platform: Platform): Promise<APIResponse<AccountStatus>> {
-  return request<AccountStatus>(`${API_BASE}/platforms/${platform}/check`)
+  return request<AccountStatus>(`${PUBLISHER_API_BASE}/platforms/${platform}/check`)
 }
 
 // 发布内容
@@ -227,7 +239,7 @@ export interface TranscriptResult {
 
 // 登出
 export async function logout(platform: Platform): Promise<APIResponse<{ platform: string; message: string }>> {
-  return request<{ platform: string; message: string }>(`${API_BASE}/platforms/${platform}/logout`, {
+  return request<{ platform: string; message: string }>(`${PUBLISHER_API_BASE}/platforms/${platform}/logout`, {
     method: 'POST',
   })
 }

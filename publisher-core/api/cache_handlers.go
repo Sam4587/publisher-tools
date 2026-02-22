@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"publisher-tools/cache"
+	"publisher-core/cache"
 )
 
 // CacheHandler 缓存管理处理器

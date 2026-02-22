@@ -29,7 +29,7 @@ type ServerConfig struct {
 func NewServer(config *ServerConfig) *Server {
 	if config == nil {
 		config = &ServerConfig{
-			Name:    "publisher-tools",
+			Name:    "publisher-core",
 			Version: "1.0.0",
 		}
 	}

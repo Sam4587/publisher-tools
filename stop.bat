@@ -10,19 +10,31 @@ echo ========================================
 echo.
 
 REM [1] Stop Go backend (port 8080)
-echo [1/3] Stopping Go backend (port 8080)...
+echo [1/4] Stopping Go backend (port 8080)...
 call :kill_port 8080
 echo     [OK] Go backend stopped
 
 REM [2] Stop Node backend (port 3001)
-echo [2/3] Stopping Node backend (port 3001)...
+echo [2/4] Stopping Node backend (port 3001)...
 call :kill_port 3001
 echo     [OK] Node backend stopped
 
-REM [3] Stop frontend (port 5173)
-echo [3/3] Stopping frontend (port 5173)...
+REM [3] Stop frontend (port 5173, 5174, 5175)
+echo [3/4] Stopping frontend (ports 5173, 5174, 5175)...
 call :kill_port 5173
+call :kill_port 5174
+call :kill_port 5175
 echo     [OK] Frontend stopped
+
+REM [4] Kill any remaining node and go processes
+echo [4/4] Cleaning up remaining processes...
+tasklist | findstr "node.exe" >nul 2>&1
+if %errorLevel% equ 0 (
+    taskkill /F /IM node.exe >nul 2>&1
+    echo     [OK] Cleaned up node processes
+) else (
+    echo     [OK] No node processes found
+)
 
 echo.
 echo ========================================

@@ -26,7 +26,7 @@ export default function Dashboard() {
       try {
         const response = await getPlatforms()
         if (response.success && response.data) {
-          const platformList = response.data.platforms as Platform[]
+          const platformList = Array.isArray(response.data) ? response.data as Platform[] : (response.data as any).platforms as Platform[]
           setPlatforms(platformList)
 
           // 检查每个平台的登录状态

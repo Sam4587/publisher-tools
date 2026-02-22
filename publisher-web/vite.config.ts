@@ -10,6 +10,31 @@ export default defineConfig({
     host: true,
     allowedHosts: ['.monkeycode-ai.online'],
     proxy: {
+      '/api/v1/publisher': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/platforms': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/tasks': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/publish': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/health': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,

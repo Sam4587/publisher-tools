@@ -38,6 +38,7 @@ const platformNames: Record<Platform, string> = {
   douyin: "抖音",
   toutiao: "今日头条",
   xiaohongshu: "小红书",
+  bilibili: "B站",
 }
 
 // 默认平台限制
@@ -45,6 +46,7 @@ const platformLimits: Record<Platform, { title_max_length: number; body_max_leng
   douyin: { title_max_length: 30, body_max_length: 2000, max_images: 12 },
   toutiao: { title_max_length: 30, body_max_length: 2000, max_images: 9 },
   xiaohongshu: { title_max_length: 20, body_max_length: 1000, max_images: 18 },
+  bilibili: { title_max_length: 80, body_max_length: 2000, max_images: 9 },
 }
 
 export default function Publish() {
@@ -53,6 +55,7 @@ export default function Publish() {
     douyin: null,
     toutiao: null,
     xiaohongshu: null,
+    bilibili: null,
   })
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null)
   const [contentType, setContentType] = useState<"images" | "video">("images")
@@ -72,7 +75,10 @@ export default function Publish() {
       try {
         const response = await getPlatforms()
         if (response.success && response.data) {
-          const platformList = response.data.platforms as Platform[]
+          // 处理不同的响应格式
+          const platformList = Array.isArray(response.data) 
+            ? response.data as Platform[] 
+            : (response.data as any).platforms as Platform[]
           setPlatforms(platformList)
 
           // 检查登录状态

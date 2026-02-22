@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"publisher-tools/ai/provider"
-	"publisher-tools/database"
+	"publisher-core/ai/provider"
+	"publisher-core/database"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"

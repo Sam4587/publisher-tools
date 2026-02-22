@@ -40,13 +40,13 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <Button
-                key={item.path}
-                variant={location.pathname === item.path ? "secondary" : "ghost"}
-                asChild
-              >
-                <Link to={item.path}>{item.label}</Link>
-              </Button>
+              <Link key={item.path} to={item.path}>
+                <Button
+                  variant={location.pathname === item.path ? "secondary" : "ghost"}
+                >
+                  {item.label}
+                </Button>
+              </Link>
             ))}
           </div>
 
@@ -77,15 +77,19 @@ export default function Navbar() {
             <SheetContent side="right" className="w-64">
               <div className="flex flex-col gap-2 mt-8">
                 {navItems.map((item) => (
-                  <Button
+                  <Link
                     key={item.path}
-                    variant={location.pathname === item.path ? "secondary" : "ghost"}
-                    className="justify-start"
-                    asChild
+                    to={item.path}
                     onClick={() => setOpen(false)}
+                    className="w-full"
                   >
-                    <Link to={item.path}>{item.label}</Link>
-                  </Button>
+                    <Button
+                      variant={location.pathname === item.path ? "secondary" : "ghost"}
+                      className="justify-start w-full"
+                    >
+                      {item.label}
+                    </Button>
+                  </Link>
                 ))}
               </div>
             </SheetContent>

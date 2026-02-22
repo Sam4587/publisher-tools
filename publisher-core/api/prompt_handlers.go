@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"publisher-tools/database"
-	"publisher-tools/prompt"
+	"publisher-core/database"
+	"publisher-core/prompt"
 
 	"github.com/gorilla/mux"
 )

@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -317,8 +318,6 @@ func ParseResolution(res string) (width, height int) {
 	// 默认返回720p
 	return 1280, 720
 }
-
-import "fmt"
 
 // FormatDuration 格式化时长
 func FormatDuration(seconds float64) string {

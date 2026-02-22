@@ -1,7 +1,7 @@
 // API 类型定义
 
 // 平台类型
-export type Platform = 'douyin' | 'toutiao' | 'xiaohongshu'
+export type Platform = 'douyin' | 'toutiao' | 'xiaohongshu' | 'bilibili'
 
 // 平台信息
 export interface PlatformInfo {

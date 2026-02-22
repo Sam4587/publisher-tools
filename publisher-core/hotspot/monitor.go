@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"publisher-tools/database"
+	"publisher-core/database"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
