@@ -3,12 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"publisher-core/config"
 )
 
 type Server struct {
@@ -19,6 +22,7 @@ type Server struct {
 	ai          AIServiceAPI
 	middleware  []Middleware
 	server      *http.Server
+	security    *config.SecurityConfig
 }
 
 type TaskManagerAPI interface {
@@ -51,12 +55,14 @@ type RouteRegistrar interface {
 }
 
 func NewServer(taskManager TaskManagerAPI, publisher PublisherAPI, storage StorageAPI, ai AIServiceAPI) *Server {
+	securityConfig := config.LoadSecurityConfig()
 	s := &Server{
 		router:      mux.NewRouter(),
 		taskManager: taskManager,
 		publisher:   publisher,
 		storage:     storage,
 		ai:          ai,
+		security:    securityConfig,
 	}
 
 	s.setupRoutes()
@@ -65,7 +71,13 @@ func NewServer(taskManager TaskManagerAPI, publisher PublisherAPI, storage Stora
 
 func (s *Server) setupRoutes() {
 	s.router.Use(LoggingMiddleware)
-	s.router.Use(CORSMiddleware)
+	s.router.Use(CORSMiddleware(
+		s.security.AllowedOrigins,
+		s.security.AllowedMethods,
+		s.security.AllowedHeaders,
+		s.security.AllowCredentials,
+		s.security.MaxAge,
+	))
 
 	apiRouter := s.router.PathPrefix("/api/v1").Subrouter()
 
@@ -370,17 +382,46 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func CORSMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+func CORSMiddleware(allowedOrigins []string, allowedMethods []string, allowedHeaders []string, allowCredentials bool, maxAge int) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+			// 检查来源是否在允许列表中
+			allowed := false
+			for _, allowedOrigin := range allowedOrigins {
+				if allowedOrigin == "*" || allowedOrigin == origin {
+					allowed = true
+					w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+					break
+				}
+			}
 
-		next.ServeHTTP(w, r)
-	})
+			// 如果来源不被允许,不设置CORS头
+			if !allowed && origin != "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// 设置其他CORS头
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+
+			if allowCredentials {
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+
+			if maxAge > 0 {
+				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", maxAge))
+			}
+
+			// 处理预检请求
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

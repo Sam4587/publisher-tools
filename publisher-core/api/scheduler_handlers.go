@@ -7,7 +7,6 @@ import (
 	"publisher-core/task"
 
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 )
 
 // SchedulerHandlers 调度器处理器

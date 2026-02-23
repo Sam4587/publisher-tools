@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -33,8 +34,16 @@ type AuthConfig struct {
 
 // DefaultAuthConfig 返回默认认证配置
 func DefaultAuthConfig() *AuthConfig {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		// 如果没有配置,生成一个警告并使用默认值
+		// 注意: 生产环境必须通过环境变量配置JWT_SECRET
+		jwtSecret = "default-jwt-secret-please-change-in-production"
+		logrus.Warn("JWT_SECRET not configured, using default value. Please set JWT_SECRET environment variable in production!")
+	}
+
 	return &AuthConfig{
-		JWTSecret:     generateRandomSecret(),
+		JWTSecret:     jwtSecret,
 		JWTExpiration: 24 * time.Hour,
 		APIKeyHeader:  "X-API-Key",
 		EnableJWT:     true,
