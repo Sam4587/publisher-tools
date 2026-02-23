@@ -40,6 +40,11 @@ func DefaultAuthConfig() *AuthConfig {
 		// 注意: 生产环境必须通过环境变量配置JWT_SECRET
 		jwtSecret = "default-jwt-secret-please-change-in-production"
 		logrus.Warn("JWT_SECRET not configured, using default value. Please set JWT_SECRET environment variable in production!")
+	} else {
+		// 验证密钥长度
+		if len(jwtSecret) < 32 {
+			logrus.Warn("JWT_SECRET is too short (minimum 32 characters recommended)")
+		}
 	}
 
 	return &AuthConfig{
@@ -201,8 +206,8 @@ func (s *AuthService) AuthMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		// 认证失败
-		logrus.Warnf("Authentication failed for %s %s: %v", r.Method, r.URL.Path, err)
+		// 认证失败（不记录详细错误信息以避免泄露）
+		logrus.Warnf("Authentication failed for %s %s", r.Method, r.URL.Path)
 		http.Error(w, `{"success":false,"error":{"code":"UNAUTHORIZED","message":"Authentication required"}}`, http.StatusUnauthorized)
 	})
 }

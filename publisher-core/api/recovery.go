@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -70,10 +69,10 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				stack := debug.Stack()
-				logrus.Errorf("Panic recovered: %v\nStack: %s", recovered, string(stack))
+				// 不记录可能包含敏感信息的panic详情
+				logrus.Errorf("Panic recovered in %s %s\nStack: %s", r.Method, r.URL.Path, string(stack))
 
-				err := fmt.Errorf("internal server error: %v", recovered)
-				jsonError(w, "INTERNAL_ERROR", err.Error(), http.StatusInternalServerError)
+				jsonError(w, "INTERNAL_ERROR", "Internal server error", http.StatusInternalServerError)
 			}
 		}()
 
@@ -89,10 +88,15 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 
 			r = r.WithContext(ctx)
 
-			done := make(chan bool, 1)
+			done := make(chan struct{}, 1)
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logrus.Errorf("Panic in timeout handler goroutine: %v", r)
+					}
+					done <- struct{}{}
+				}()
 				next.ServeHTTP(w, r)
-				done <- true
 			}()
 
 			select {
@@ -101,6 +105,8 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 			case <-ctx.Done():
 				logrus.Warnf("Request timeout: %s %s", r.Method, r.URL.Path)
 				jsonError(w, "TIMEOUT", "Request timeout", http.StatusRequestTimeout)
+				// Wait for goroutine to complete to prevent leak
+				<-done
 			}
 		})
 	}

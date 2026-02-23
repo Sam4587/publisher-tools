@@ -211,6 +211,12 @@ func (h *AccountHandler) LoginCallback(w http.ResponseWriter, r *http.Request) {
 
 	// 执行健康检查（使用带超时的上下文）
 	go func(accountID string) {
+		defer func() {
+			if r := recover(); r != nil {
+				logrus.Errorf("Panic in health check goroutine for account %s: %v", accountID, r)
+			}
+		}()
+
 		// 创建带超时的上下文，避免 goroutine 泄漏
 		checkCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

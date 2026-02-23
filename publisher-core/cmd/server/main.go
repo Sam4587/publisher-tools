@@ -173,13 +173,13 @@ func (s *PublisherService) GetPlatformInfo(platform string) (interface{}, error)
 	}, nil
 }
 
-func (s *PublisherService) Login(platform string) (interface{}, error) {
+func (s *PublisherService) Login(ctx context.Context, platform string) (interface{}, error) {
 	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := pub.Login(context.Background())
+	result, err := pub.Login(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -187,13 +187,13 @@ func (s *PublisherService) Login(platform string) (interface{}, error) {
 	return result, nil
 }
 
-func (s *PublisherService) CheckLogin(platform string) (interface{}, error) {
+func (s *PublisherService) CheckLogin(ctx context.Context, platform string) (interface{}, error) {
 	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	loggedIn, err := pub.CheckLoginStatus(context.Background())
+	loggedIn, err := pub.CheckLoginStatus(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -204,13 +204,13 @@ func (s *PublisherService) CheckLogin(platform string) (interface{}, error) {
 	}, nil
 }
 
-func (s *PublisherService) Logout(platform string) (interface{}, error) {
+func (s *PublisherService) Logout(ctx context.Context, platform string) (interface{}, error) {
 	pub, err := s.factory.Create(platform, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	err = pub.Logout(context.Background())
+	err = pub.Logout(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -225,23 +225,23 @@ type StorageService struct {
 	storage storage.Storage
 }
 
-func (s *StorageService) Upload(file []byte, path string) (string, error) {
-	if err := s.storage.Write(context.Background(), path, file); err != nil {
+func (s *StorageService) Upload(ctx context.Context, file []byte, path string) (string, error) {
+	if err := s.storage.Write(ctx, path, file); err != nil {
 		return "", err
 	}
-	return s.storage.GetURL(context.Background(), path)
+	return s.storage.GetURL(ctx, path)
 }
 
-func (s *StorageService) Download(path string) ([]byte, error) {
-	return s.storage.Read(context.Background(), path)
+func (s *StorageService) Download(ctx context.Context, path string) ([]byte, error) {
+	return s.storage.Read(ctx, path)
 }
 
-func (s *StorageService) List(prefix string) ([]string, error) {
-	return s.storage.List(context.Background(), prefix)
+func (s *StorageService) List(ctx context.Context, prefix string) ([]string, error) {
+	return s.storage.List(ctx, prefix)
 }
 
-func (s *StorageService) Delete(path string) error {
-	return s.storage.Delete(context.Background(), path)
+func (s *StorageService) Delete(ctx context.Context, path string) error {
+	return s.storage.Delete(ctx, path)
 }
 
 type TaskService struct {
@@ -285,12 +285,12 @@ type AIServiceAdapter struct {
 	service *ai.Service
 }
 
-func (a *AIServiceAdapter) Generate(providerName string, opts *provider.GenerateOptions) (*provider.GenerateResult, error) {
-	return a.service.Generate(context.Background(), opts)
+func (a *AIServiceAdapter) Generate(ctx context.Context, providerName string, opts *provider.GenerateOptions) (*provider.GenerateResult, error) {
+	return a.service.Generate(ctx, opts)
 }
 
-func (a *AIServiceAdapter) GenerateStream(providerName string, opts *provider.GenerateOptions) (<-chan string, error) {
-	return a.service.GenerateStream(context.Background(), opts)
+func (a *AIServiceAdapter) GenerateStream(ctx context.Context, providerName string, opts *provider.GenerateOptions) (<-chan string, error) {
+	return a.service.GenerateStream(ctx, opts)
 }
 
 func (a *AIServiceAdapter) ListProviders() []string {
@@ -309,35 +309,35 @@ func (a *AIServiceAdapter) ListModels() map[string][]string {
 	return a.service.ListModels()
 }
 
-func (a *AIServiceAdapter) GenerateContent(prompt string, options map[string]interface{}) (interface{}, error) {
+func (a *AIServiceAdapter) GenerateContent(ctx context.Context, prompt string, options map[string]interface{}) (interface{}, error) {
 	opts := &provider.GenerateOptions{
 		Messages: []provider.Message{
 			{Role: provider.RoleUser, Content: prompt},
 		},
 	}
-	return a.service.Generate(context.Background(), opts)
+	return a.service.Generate(ctx, opts)
 }
 
-func (a *AIServiceAdapter) OptimizeTitle(title string, platform string) (string, error) {
+func (a *AIServiceAdapter) OptimizeTitle(ctx context.Context, title string, platform string) (string, error) {
 	opts := &provider.GenerateOptions{
 		Messages: []provider.Message{
 			{Role: provider.RoleSystem, Content: "You are a title optimization expert."},
 			{Role: provider.RoleUser, Content: fmt.Sprintf("Optimize this title for %s platform: %s", platform, title)},
 		},
 	}
-	result, err := a.service.Generate(context.Background(), opts)
+	result, err := a.service.Generate(ctx, opts)
 	if err != nil {
 		return title, err
 	}
 	return result.Content, nil
 }
 
-func (a *AIServiceAdapter) AnalyzeContent(content string) (interface{}, error) {
+func (a *AIServiceAdapter) AnalyzeContent(ctx context.Context, content string) (interface{}, error) {
 	opts := &provider.GenerateOptions{
 		Messages: []provider.Message{
 			{Role: provider.RoleSystem, Content: "You are a content analysis expert."},
 			{Role: provider.RoleUser, Content: fmt.Sprintf("Analyze this content: %s", content)},
 		},
 	}
-	return a.service.Generate(context.Background(), opts)
+	return a.service.Generate(ctx, opts)
 }

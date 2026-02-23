@@ -388,36 +388,56 @@ func CORSMiddleware(allowedOrigins []string, allowedMethods []string, allowedHea
 			origin := r.Header.Get("Origin")
 
 			// 检查来源是否在允许列表中
+			allowedOrigin := ""
 			allowed := false
-			for _, allowedOrigin := range allowedOrigins {
-				if allowedOrigin == "*" || allowedOrigin == origin {
+			for _, ao := range allowedOrigins {
+				if ao == "*" && !allowCredentials {
+					// 如果允许所有来源且不使用凭证，允许
+					allowedOrigin = "*"
 					allowed = true
-					w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+					break
+				}
+				if ao == origin {
+					// 如果来源匹配，允许
+					allowedOrigin = origin
+					allowed = true
 					break
 				}
 			}
 
-			// 如果来源不被允许,不设置CORS头
+			// 如果来源不被允许，不设置CORS头并继续处理
 			if !allowed && origin != "" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			// 设置其他CORS头
-			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
-			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+			// 只为允许的来源设置CORS头
+			if allowed {
+				w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 
-			if allowCredentials {
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-			}
+				// 设置其他CORS头
+				if len(allowedMethods) > 0 {
+					w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+				}
+				if len(allowedHeaders) > 0 {
+					w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+				}
 
-			if maxAge > 0 {
-				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", maxAge))
+				// 添加ExposeHeaders以允许前端访问自定义响应头
+				w.Header().Set("Access-Control-Expose-Headers", "Content-Type, Authorization, X-Request-ID")
+
+				if allowCredentials {
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+				}
+
+				if maxAge > 0 {
+					w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", maxAge))
+				}
 			}
 
 			// 处理预检请求
 			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 

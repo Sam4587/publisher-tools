@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"publisher-core/util"
 )
 
 // AuthHandler 认证 API 处理器
@@ -68,9 +69,24 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 验证密码长度
-	if len(req.Password) < 8 {
-		jsonError(w, "INVALID_PASSWORD", "password must be at least 8 characters", http.StatusBadRequest)
+	// 验证用户名
+	if err := util.NewStringValidator(req.Username).
+		Required().
+		MinLength(3).
+		MaxLength(50).
+		AlphaNumeric().
+		NoSQLInjection().
+		NoXSS().
+		Validate(); err != nil {
+		jsonError(w, "INVALID_USERNAME", err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 验证密码
+	if err := util.NewPasswordValidator(req.Password).
+		MinLength(8).
+		Validate(); err != nil {
+		jsonError(w, "INVALID_PASSWORD", err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -343,8 +359,8 @@ func parseIntParam(param string, defaultValue int) int {
 		return defaultValue
 	}
 	var result int
-	if _, err := json.Number(param).Int64(); err == nil {
-		result = int(json.Number(param).Int64())
+	if val, err := json.Number(param).Int64(); err == nil {
+		result = int(val)
 		return result
 	}
 	return defaultValue
