@@ -20,6 +20,7 @@ type SchedulerService struct {
 	queueService *QueueService
 	cron        *cron.Cron
 	jobs        map[string]cron.EntryID
+	ctx         context.Context
 	mu          sync.RWMutex
 }
 
@@ -30,11 +31,15 @@ func NewSchedulerService(db *gorm.DB, queueService *QueueService) *SchedulerServ
 		queueService: queueService,
 		cron:        cron.New(cron.WithSeconds()),
 		jobs:        make(map[string]cron.EntryID),
+		ctx:         context.Background(),
 	}
 }
 
 // Start 启动调度服务
 func (s *SchedulerService) Start(ctx context.Context) error {
+	// 保存context用于后续操作
+	s.ctx = ctx
+	
 	// 加载所有激活的定时任务
 	var scheduledTasks []database.ScheduledTask
 	if err := s.db.Where("is_active = ?", true).Find(&scheduledTasks).Error; err != nil {
@@ -112,7 +117,7 @@ func (s *SchedulerService) executeScheduledTask(task *database.ScheduledTask) {
 		Payload:   payload,
 	}
 
-	_, err := s.queueService.SubmitTask(context.Background(), taskReq)
+	_, err := s.queueService.SubmitTask(s.ctx, taskReq)
 	if err != nil {
 		logrus.Errorf("提交定时任务失败: %v", err)
 

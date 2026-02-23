@@ -210,7 +210,7 @@ func (h *AccountHandler) LoginCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 执行健康检查（使用带超时的上下文）
-	go func(accountID string) {
+	go func(accountID string, reqCtx context.Context) {
 		defer func() {
 			if r := recover(); r != nil {
 				logrus.Errorf("Panic in health check goroutine for account %s: %v", accountID, r)
@@ -218,14 +218,15 @@ func (h *AccountHandler) LoginCallback(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		// 创建带超时的上下文，避免 goroutine 泄漏
-		checkCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		// 从请求上下文继承,而不是使用 Background
+		checkCtx, cancel := context.WithTimeout(reqCtx, 30*time.Second)
 		defer cancel()
 
 		time.Sleep(2 * time.Second)
 		if err := h.accountService.HealthCheck(checkCtx, accountID); err != nil {
 			logrus.Warnf("Health check failed for new account %s: %v", accountID, err)
 		}
-	}(newAccount.AccountID)
+	}(newAccount.AccountID, r.Context())
 
 	logrus.Infof("Account created successfully: %s (%s)", newAccount.AccountID, req.Platform)
 	jsonSuccess(w, map[string]interface{}{

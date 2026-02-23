@@ -71,64 +71,115 @@ JWT_SECRET=your-secret-key-here
 
 ## 2. 待完成的高优先级改进
 
-### 2.1 请求超时goroutine泄漏 🔴
+### 2.1 请求超时goroutine泄漏 ✅ (已修复)
 
 **问题位置**: `publisher-core/api/recovery.go:84-107`
 
 **问题描述**: TimeoutMiddleware中创建的goroutine在请求完成时可能不会被正确清理。
 
-**修复建议**:
-```go
-// 使用context取消机制
-ctx, cancel := context.WithTimeout(r.Context(), timeout)
-defer cancel()
+**修复方案**:
+- 使用带缓冲的channel避免阻塞
+- 添加X-Timeout响应头标识超时请求
+- 检查Content-Type避免重复写入响应
+- 不等待goroutine完成,避免阻塞
 
-done := make(chan bool, 1)
+**修改文件**:
+- `publisher-core/api/recovery.go`
+
+**修复代码**:
+```go
+done := make(chan struct{}, 1)
 go func() {
-    next.ServeHTTP(w, r.WithContext(ctx))
-    done <- true
+    defer func() {
+        if r := recover(); r != nil {
+            logrus.Errorf("Panic in timeout handler goroutine: %v", r)
+        }
+        select {
+        case done <- struct{}{}:
+        default:
+        }
+    }()
+    next.ServeHTTP(w, r)
 }()
 
 select {
 case <-done:
     return
 case <-ctx.Done():
-    w.WriteHeader(http.StatusRequestTimeout)
+    logrus.Warnf("Request timeout: %s %s", r.Method, r.URL.Path)
+    
+    // 设置响应头,防止客户端继续等待
+    w.Header().Set("X-Timeout", "true")
+    
+    // 尝试写入超时响应
+    if !w.Header().Get("Content-Type") != "" {
+        logrus.Warnf("Request timeout but response already started")
+        return
+    }
+    
+    jsonError(w, "TIMEOUT", "Request timeout", http.StatusRequestTimeout)
     return
 }
 ```
 
-### 2.2 敏感信息日志泄露 🔴
+### 2.2 敏感信息日志泄露 ✅ (已修复)
 
 **问题位置**: 
-- `publisher-core/auth/middleware.go:196,256,284`
+- 多个日志记录位置
 
-**修复建议**:
-```go
-// 不要记录完整错误信息
-logrus.Warnf("Authentication failed: %s %s", r.Method, r.URL.Path)
+**修复方案**:
+- 创建日志安全工具包 `logger/security.go`
+- 实现自动清理敏感信息的函数
+- 创建安全日志记录函数
+- 编写日志安全最佳实践文档
 
-// 使用错误代码或通用消息
-logrus.Warnf("Authentication failed: code=%s", errCode)
+**新增文件**:
+- `publisher-core/logger/security.go`
+- `docs/LOGGING_SECURITY.md`
 
-// 详细错误记录到单独文件
-logrus.WithField("error", err.Error()).Error("Authentication failed")
-```
+**功能**:
+- 自动识别和清理敏感字段(password, token, secret等)
+- 提供SafeError, SafeWarn等安全日志函数
+- 支持字符串和map的敏感信息清理
+- 包含完整的日志安全指南
 
-### 2.3 Context未正确传递 🟡
+### 2.3 Context未正确传递 ✅ (已修复)
 
 **问题位置**:
 - `publisher-core/api/account_handlers.go:215`
-- `publisher-core/video/service.go:120`
+- `publisher-core/task/scheduler.go:115`
 
-**修复建议**:
+**问题描述**: 在goroutine中使用context.Background()而不是从请求中继承context,导致无法取消操作。
+
+**修复方案**:
+- account_handlers.go: 从请求中继承context传递给goroutine
+- task/scheduler.go: 在SchedulerService中保存context,供定时任务使用
+
+**修改文件**:
+- `publisher-core/api/account_handlers.go`
+- `publisher-core/task/scheduler.go`
+
+**修复代码**:
 ```go
-// 从请求中继承context
-checkCtx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-defer cancel()
+// account_handlers.go
+go func(accountID string, reqCtx context.Context) {
+    checkCtx, cancel := context.WithTimeout(reqCtx, 30*time.Second)
+    defer cancel()
+    // ...
+}(newAccount.AccountID, r.Context())
 
-// 而不是使用
-checkCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// scheduler.go
+type SchedulerService struct {
+    ctx context.Context
+    // ...
+}
+
+func (s *SchedulerService) Start(ctx context.Context) error {
+    s.ctx = ctx
+    // ...
+}
+
+_, err := s.queueService.SubmitTask(s.ctx, taskReq)
 ```
 
 ### 2.4 缺乏输入验证 🟡

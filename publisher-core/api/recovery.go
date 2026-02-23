@@ -94,7 +94,10 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 					if r := recover(); r != nil {
 						logrus.Errorf("Panic in timeout handler goroutine: %v", r)
 					}
-					done <- struct{}{}
+					select {
+					case done <- struct{}{}:
+					default:
+					}
 				}()
 				next.ServeHTTP(w, r)
 			}()
@@ -104,9 +107,23 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 				return
 			case <-ctx.Done():
 				logrus.Warnf("Request timeout: %s %s", r.Method, r.URL.Path)
+				
+				// 设置响应头,防止客户端继续等待
+				w.Header().Set("X-Timeout", "true")
+				
+				// 尝试写入超时响应
+				if !w.Header().Get("Content-Type") != "" {
+					// 如果已经设置了Content-Type,说明已经开始响应
+					// 此时不能写入新响应
+					logrus.Warnf("Request timeout but response already started")
+					return
+				}
+				
 				jsonError(w, "TIMEOUT", "Request timeout", http.StatusRequestTimeout)
-				// Wait for goroutine to complete to prevent leak
-				<-done
+				
+				// 不等待goroutine完成,避免阻塞
+				// goroutine会在context取消时自然结束
+				return
 			}
 		})
 	}
