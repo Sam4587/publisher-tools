@@ -321,6 +321,56 @@ func (h *APIHandler) UpdateHotspots(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// AIAnalyze AI 分析热点
+func (h *APIHandler) AIAnalyze(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Topics  []HotTopic `json:"topics"`
+		Options struct {
+			Provider string `json:"provider"`
+			Focus    string `json:"focus"`
+		} `json:"options"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "INVALID_REQUEST", err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 模拟 AI 分析结果
+	result := map[string]interface{}{
+		"summary": "根据分析，当前热点话题主要集中在科技创新和社会发展领域。AI技术的快速发展正在改变各个行业的格局，新能源汽车等新兴产业展现出强劲的增长势头。",
+		"keyPoints": []string{
+			"AI 技术持续突破，GPT-5 等大模型引领新一轮技术革命",
+			"新能源汽车市场快速增长，反映出消费者对环保出行的认可",
+			"娱乐产业复苏，春节档票房创新高显示消费信心恢复",
+		},
+		"sentiment":      "positive",
+		"recommendations": []string{"关注 AI 技术发展动态", "布局新能源产业链", "把握消费复苏机遇"},
+	}
+
+	jsonSuccess(w, result)
+}
+
+// AIBriefing 生成热点简报
+func (h *APIHandler) AIBriefing(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Topics    []HotTopic `json:"topics"`
+		MaxLength int        `json:"maxLength"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "INVALID_REQUEST", err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 模拟生成简报
+	brief := "【热点简报】\n\n今日热点主要集中在科技和财经领域。AI技术持续突破，OpenAI宣布GPT-5即将发布，引发广泛关注。新能源汽车销量创新高，2024年突破千万辆大关，显示出强劲的市场需求。娱乐产业方面，春节档票房破纪录，反映消费市场复苏态势良好。\n\n建议关注：AI技术发展、新能源产业链、消费复苏主题。"
+
+	jsonSuccess(w, map[string]interface{}{
+		"brief": brief,
+	})
+}
+
 func (h *APIHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	jsonSuccess(w, map[string]interface{}{
 		"status":  "healthy",
@@ -389,6 +439,8 @@ func main() {
 	api.HandleFunc("/hot-topics/fetch", handler.FetchHotspots).Methods("POST")
 	api.HandleFunc("/hot-topics/update", handler.UpdateHotspots).Methods("POST")
 	api.HandleFunc("/hot-topics/trends/new", handler.GetNewTrends).Methods("GET")
+	api.HandleFunc("/hot-topics/ai/analyze", handler.AIAnalyze).Methods("POST")
+	api.HandleFunc("/hot-topics/ai/briefing", handler.AIBriefing).Methods("POST")
 	
 	// 兼容前端路径
 	api.HandleFunc("/hot-topics/newsnow/sources", handler.GetSources).Methods("GET")

@@ -212,7 +212,7 @@ func getIPAddress(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-func jsonError(w http.ResponseWriter, code string, message string, statusCode int) {
+func recoveryJsonError(w http.ResponseWriter, code string, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]interface{}{

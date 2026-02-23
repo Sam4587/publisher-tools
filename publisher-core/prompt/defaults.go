@@ -5,6 +5,8 @@ import (
 	"log"
 	"publisher-core/database"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // DefaultPromptTemplates 默认提示词模板
@@ -258,8 +260,8 @@ var DefaultPromptTemplates = []struct {
 }
 
 // InitializeDefaultTemplates 初始化默认模板
-func InitializeDefaultTemplates(db *database.DB) error {
-	service := NewService(db.DB)
+func InitializeDefaultTemplates(db *gorm.DB) error {
+	service := NewService(db)
 
 	for _, template := range DefaultPromptTemplates {
 		// 检查模板是否已存在

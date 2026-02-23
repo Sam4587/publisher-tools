@@ -104,6 +104,11 @@ func (s *Server) RegisterRoutes(registrar RouteRegistrar) {
 	registrar.RegisterRoutes(s.router)
 }
 
+// Router 返回路由器实例
+func (s *Server) Router() *mux.Router {
+	return s.router
+}
+
 func (s *Server) Start(addr string) error {
 	s.server = &http.Server{
 		Addr:         addr,

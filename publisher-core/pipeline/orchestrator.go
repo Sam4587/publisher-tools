@@ -156,7 +156,7 @@ func (o *PipelineOrchestrator) executeSteps(ctx context.Context, pipeline *Pipel
 	}()
 
 	// 构建步骤依赖图
-	dependencyGraph := o.buildDependencyGraph(pipeline.Steps)
+	_ = o.buildDependencyGraph(pipeline.Steps)
 
 	// 按顺序执行步骤
 	for i, step := range pipeline.Steps {

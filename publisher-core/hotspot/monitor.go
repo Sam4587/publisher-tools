@@ -431,7 +431,7 @@ func (s *CompetitorAnalysisService) identifyOpportunities(topic database.Topic, 
 	}
 
 	// 检查热度差距
-	if len(competitors) > 0 && topic.Heat > competitors[0].Heat*0.8 {
+	if len(competitors) > 0 && topic.Heat > int(float64(competitors[0].Heat)*0.8) {
 		opportunities = append(opportunities, "与领先者差距较小，有机会超越")
 	}
 
@@ -444,7 +444,7 @@ func (s *CompetitorAnalysisService) identifyThreats(topic database.Topic, compet
 
 	// 检查是否有强劲的上升竞品
 	for _, comp := range competitors {
-		if comp.Trend == "up" && comp.Heat > topic.Heat*0.9 {
+		if comp.Trend == "up" && comp.Heat > int(float64(topic.Heat)*0.9) {
 			threats = append(threats, fmt.Sprintf("竞品 '%s' 正在快速上升", comp.Title))
 		}
 	}

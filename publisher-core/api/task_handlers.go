@@ -119,7 +119,7 @@ func (api *TaskAPI) CancelTask(c *gin.Context) {
 
 // ListTasks 列出任务
 func (api *TaskAPI) ListTasks(c *gin.Context) {
-	var filter task.TaskFilter
+	var filter task.StateTaskFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"publisher-core/database"
@@ -477,8 +476,8 @@ func (s *AccountService) decrypt(ciphertext string) (string, error) {
 		return "", fmt.Errorf("密文太短")
 	}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	nonce, ciphertextBytes := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertextBytes, nil)
 	if err != nil {
 		return "", err
 	}
@@ -515,15 +514,6 @@ func (s *AccountService) selectLeastUsed(accounts []database.PlatformAccount) *d
 	}
 
 	return selected
-}
-
-// 辅助函数
-func marshalJSON(v interface{}) string {
-	if v == nil {
-		return ""
-	}
-	data, _ := json.Marshal(v)
-	return string(data)
 }
 
 // 请求和响应类型

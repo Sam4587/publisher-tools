@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"publisher-core/ai"
+	"publisher-core/ai/provider"
 	"publisher-core/adapters"
 	"publisher-core/analytics"
+	publisher "publisher-core/interfaces"
 	"strings"
 	"time"
 
@@ -18,7 +20,7 @@ import (
 type HandlerRegistry struct {
 	orchestrator *PipelineOrchestrator
 	aiService   *ai.Service
-	publisher   *adapters.PublisherManager
+	publisher   *adapters.PublisherFactory
 	analytics   *analytics.AnalyticsService
 }
 
@@ -26,7 +28,7 @@ type HandlerRegistry struct {
 func NewHandlerRegistry(
 	orchestrator *PipelineOrchestrator,
 	aiService *ai.Service,
-	publisher *adapters.PublisherManager,
+	publisher *adapters.PublisherFactory,
 	analyticsService *analytics.AnalyticsService,
 ) *HandlerRegistry {
 	registry := &HandlerRegistry{
@@ -138,9 +140,9 @@ func (h *AIContentGenerator) Execute(ctx context.Context, config map[string]inte
 		topic, strings.Join(keywords, ", "), targetAudience)
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:    model,
-		Prompt:   prompt,
+		Messages: []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens: 2000,
 		Temperature: 0.7,
 	})
@@ -150,7 +152,7 @@ func (h *AIContentGenerator) Execute(ctx context.Context, config map[string]inte
 
 	return map[string]interface{}{
 		"content":     result.Content,
-		"tokens_used": result.TokensUsed,
+		"tokens_used": result.InputTokens + result.OutputTokens,
 		"model":       model,
 	}, nil
 }
@@ -183,9 +185,9 @@ func (h *ContentOptimizer) Execute(ctx context.Context, config map[string]interf
 		map[bool]string{true: "2. 改善可读性和流畅度\n"}[improveReadability])
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   2000,
 		Temperature: 0.3,
 	})
@@ -195,7 +197,7 @@ func (h *ContentOptimizer) Execute(ctx context.Context, config map[string]interf
 
 	return map[string]interface{}{
 		"optimized_content": result.Content,
-		"tokens_used":       result.TokensUsed,
+		"tokens_used":       result.InputTokens + result.OutputTokens,
 	}, nil
 }
 
@@ -241,9 +243,9 @@ func (h *QualityScorer) Execute(ctx context.Context, config map[string]interface
 		content)
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   500,
 		Temperature: 0.2,
 	})
@@ -269,7 +271,7 @@ func (h *QualityScorer) Execute(ctx context.Context, config map[string]interface
 
 // PlatformPublisher 平台发布处理器
 type PlatformPublisher struct {
-	publisher *adapters.PublisherManager
+	publisher *adapters.PublisherFactory
 }
 
 func (h *PlatformPublisher) Execute(ctx context.Context, config map[string]interface{}, input map[string]interface{}) (map[string]interface{}, error) {
@@ -278,15 +280,15 @@ func (h *PlatformPublisher) Execute(ctx context.Context, config map[string]inter
 		return nil, fmt.Errorf("缺少 platforms 参数")
 	}
 
-	content, ok := input["optimized_content"].(string)
+	contentStr, ok := input["optimized_content"].(string)
 	if !ok {
-		content, ok = input["content"].(string)
+		contentStr, ok = input["content"].(string)
 		if !ok {
 			return nil, fmt.Errorf("缺少 content 或 optimized_content 参数")
 		}
 	}
 
-	topic, _ := input["topic"].(string)
+	title, _ := input["topic"].(string)
 
 	results := make(map[string]interface{})
 	successCount := 0
@@ -295,24 +297,23 @@ func (h *PlatformPublisher) Execute(ctx context.Context, config map[string]inter
 		logrus.Infof("开始发布到平台: %s", platform)
 
 		// 获取适配器
-		adapter := h.publisher.GetAdapter(platform)
-		if adapter == nil {
+		adapter, err := h.publisher.Create(platform, nil)
+		if err != nil {
 			results[platform] = map[string]interface{}{
 				"success": false,
-				"error":   "适配器未找到",
+				"error":   fmt.Sprintf("适配器创建失败: %v", err),
 			}
 			continue
 		}
 
-		// 构建发布请求
-		publishRequest := &adapters.PublishRequest{
-			Title:   topic,
-			Content: content,
-			Images:  []string{}, // 可以从 input 中获取
+		// 构建发布内容
+		publishContent := &publisher.Content{
+			Title: title,
+			Body:  contentStr,
 		}
 
 		// 执行发布
-		result, err := adapter.Publish(ctx, publishRequest)
+		result, err := adapter.Publish(ctx, publishContent)
 		if err != nil {
 			logrus.Errorf("发布到 %s 失败: %v", platform, err)
 			results[platform] = map[string]interface{}{
@@ -324,12 +325,12 @@ func (h *PlatformPublisher) Execute(ctx context.Context, config map[string]inter
 
 		results[platform] = map[string]interface{}{
 			"success": true,
-			"url":     result.URL,
+			"url":     result.PostURL,
 			"post_id": result.PostID,
 		}
 		successCount++
 
-		logrus.Infof("成功发布到 %s: %s", platform, result.URL)
+		logrus.Infof("成功发布到 %s: %s", platform, result.PostURL)
 	}
 
 	return map[string]interface{}{
@@ -472,9 +473,9 @@ func (h *ContentRewriter) Execute(ctx context.Context, config map[string]interfa
 		transcript, style, maxLength)
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   1500,
 		Temperature: 0.8,
 	})
@@ -484,7 +485,7 @@ func (h *ContentRewriter) Execute(ctx context.Context, config map[string]interfa
 
 	return map[string]interface{}{
 		"rewritten_content": result.Content,
-		"tokens_used":       result.TokensUsed,
+		"tokens_used":       result.InputTokens + result.OutputTokens,
 	}, nil
 }
 
@@ -628,9 +629,9 @@ func (h *TrendAnalyzer) Execute(ctx context.Context, config map[string]interface
 		strings.Join(titles, "\n"))
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   1000,
 		Temperature: 0.3,
 	})
@@ -688,9 +689,9 @@ func (h *DataAnalyzer) Execute(ctx context.Context, config map[string]interface{
 		string(dataJSON))
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   2000,
 		Temperature: 0.4,
 	})
@@ -708,7 +709,7 @@ func (h *DataAnalyzer) Execute(ctx context.Context, config map[string]interface{
 type ReportGenerator struct{}
 
 func (h *ReportGenerator) Execute(ctx context.Context, config map[string]interface{}, input map[string]interface{}) (map[string]interface{}, error) {
-	report, ok := input["report"].(string)
+	_, ok := input["report"].(string)
 	if !ok {
 		return nil, fmt.Errorf("缺少 report 参数")
 	}

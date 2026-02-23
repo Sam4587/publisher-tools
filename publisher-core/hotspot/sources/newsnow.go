@@ -241,9 +241,34 @@ func GetAllSourceIDs() []string {
 }
 
 func CreateAllSources() []hotspot.SourceInterface {
-	var result []hotspot.SourceInterface
-	for _, id := range GetAllSourceIDs() {
-		result = append(result, NewNewsNowSource(id))
+	return []hotspot.SourceInterface{
+		NewWeiboSource(),
+		NewDouyinSource(),
+		NewZhihuSource(),
+		NewBaiduSource(),
+		NewRSSSource(RSSConfig{
+			ID:      "toutiao",
+			Name:    "今日头条",
+			FeedURL: "https://www.toutiao.com/rss",
+			Enabled: true,
+		}),
+		NewRSSSource(RSSConfig{
+			ID:      "netease",
+			Name:    "网易新闻",
+			FeedURL: "https://news.163.com/special/0001386F/rss_news.xml",
+			Enabled: true,
+		}),
+		NewRSSSource(RSSConfig{
+			ID:      "sina",
+			Name:    "新浪新闻",
+			FeedURL: "https://news.sina.com.cn/sroll/news.d.html",
+			Enabled: true,
+		}),
+		NewRSSSource(RSSConfig{
+			ID:      "qq",
+			Name:    "腾讯新闻",
+			FeedURL: "https://news.qq.com/rss/newsgn.xml",
+			Enabled: true,
+		}),
 	}
-	return result
 }

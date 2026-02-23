@@ -182,8 +182,8 @@ func (s *Selector) tryProvider(ctx context.Context, provider Provider, audioPath
 	result, err := provider.Recognize(ctx, audioPath, opts)
 
 	// 更新提供商统计
+	s.stats.mu.Lock()
 	stats := s.stats.ProviderStats[provider.Name()]
-	stats.mu.Lock()
 	stats.Requests++
 	stats.LastUsed = time.Now()
 
@@ -195,7 +195,7 @@ func (s *Selector) tryProvider(ctx context.Context, provider Provider, audioPath
 		stats.TotalTime += time.Since(startTime)
 		stats.AvgTime = time.Duration(int64(stats.TotalTime) / stats.Successes)
 	}
-	stats.mu.Unlock()
+	s.stats.mu.Unlock()
 
 	return result, err
 }
@@ -265,7 +265,6 @@ func (s *Selector) GetStats() *SelectorStats {
 	}
 
 	for k, v := range s.stats.ProviderStats {
-		v.mu.RLock()
 		stats.ProviderStats[k] = &ProviderStats{
 			Requests:    v.Requests,
 			Successes:   v.Successes,
@@ -275,7 +274,6 @@ func (s *Selector) GetStats() *SelectorStats {
 			LastUsed:    v.LastUsed,
 			LastFailure: v.LastFailure,
 		}
-		v.mu.RUnlock()
 	}
 
 	return stats

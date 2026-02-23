@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"publisher-core/database"
 	"publisher-core/prompt"
 
 	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
 // PromptTemplateHandler 提示词模板处理器
@@ -18,10 +18,10 @@ type PromptTemplateHandler struct {
 }
 
 // NewPromptTemplateHandler 创建提示词模板处理器
-func NewPromptTemplateHandler(db *database.DB) *PromptTemplateHandler {
+func NewPromptTemplateHandler(db *gorm.DB) *PromptTemplateHandler {
 	return &PromptTemplateHandler{
-		service:       prompt.NewService(db.DB),
-		abTestService: prompt.NewABTestService(db.DB),
+		service:       prompt.NewService(db),
+		abTestService: prompt.NewABTestService(db),
 	}
 }
 
@@ -50,17 +50,17 @@ func (h *PromptTemplateHandler) RegisterRoutes(router *mux.Router) {
 func (h *PromptTemplateHandler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 	var req prompt.CreateTemplateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的请求参数")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的请求参数")
 		return
 	}
 
 	template, err := h.service.CreateTemplate(&req)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, template)
+	promptRespondWithJSON(w, http.StatusCreated, template)
 }
 
 // GetTemplate 获取模板
@@ -70,11 +70,11 @@ func (h *PromptTemplateHandler) GetTemplate(w http.ResponseWriter, r *http.Reque
 
 	template, err := h.service.GetTemplate(templateID)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, err.Error())
+		promptRespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, template)
+	promptRespondWithJSON(w, http.StatusOK, template)
 }
 
 // ListTemplates 列出模板
@@ -103,11 +103,11 @@ func (h *PromptTemplateHandler) ListTemplates(w http.ResponseWriter, r *http.Req
 
 	templates, total, err := h.service.ListTemplates(templateType, category, isActive, page, pageSize)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{
+	promptRespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"templates": templates,
 		"total":     total,
 		"page":      page,
@@ -122,17 +122,17 @@ func (h *PromptTemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Re
 
 	var req prompt.UpdateTemplateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的请求参数")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的请求参数")
 		return
 	}
 
 	template, err := h.service.UpdateTemplate(templateID, &req)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, template)
+	promptRespondWithJSON(w, http.StatusOK, template)
 }
 
 // DeleteTemplate 删除模板
@@ -141,11 +141,11 @@ func (h *PromptTemplateHandler) DeleteTemplate(w http.ResponseWriter, r *http.Re
 	templateID := vars["templateId"]
 
 	if err := h.service.DeleteTemplate(templateID); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "删除成功"})
+	promptRespondWithJSON(w, http.StatusOK, map[string]string{"message": "删除成功"})
 }
 
 // RenderTemplate 渲染模板
@@ -157,17 +157,17 @@ func (h *PromptTemplateHandler) RenderTemplate(w http.ResponseWriter, r *http.Re
 		Variables map[string]interface{} `json:"variables"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的请求参数")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的请求参数")
 		return
 	}
 
 	rendered, err := h.service.RenderTemplate(templateID, req.Variables)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"content": rendered})
+	promptRespondWithJSON(w, http.StatusOK, map[string]string{"content": rendered})
 }
 
 // GetTemplateVersions 获取模板版本历史
@@ -190,11 +190,11 @@ func (h *PromptTemplateHandler) GetTemplateVersions(w http.ResponseWriter, r *ht
 
 	versions, total, err := h.service.GetTemplateVersions(templateID, page, pageSize)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{
+	promptRespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"versions":  versions,
 		"total":     total,
 		"page":      page,
@@ -210,34 +210,34 @@ func (h *PromptTemplateHandler) RestoreTemplateVersion(w http.ResponseWriter, r 
 
 	version, err := strconv.Atoi(versionStr)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的版本号")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的版本号")
 		return
 	}
 
 	template, err := h.service.RestoreTemplateVersion(templateID, version)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, template)
+	promptRespondWithJSON(w, http.StatusOK, template)
 }
 
 // CreateABTest 创建A/B测试
 func (h *PromptTemplateHandler) CreateABTest(w http.ResponseWriter, r *http.Request) {
 	var req prompt.CreateABTestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的请求参数")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的请求参数")
 		return
 	}
 
 	abTest, err := h.abTestService.CreateABTest(&req)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, abTest)
+	promptRespondWithJSON(w, http.StatusCreated, abTest)
 }
 
 // GetABTest 获取A/B测试
@@ -247,17 +247,17 @@ func (h *PromptTemplateHandler) GetABTest(w http.ResponseWriter, r *http.Request
 
 	testID, err := strconv.ParseUint(testIDStr, 10, 32)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的测试ID")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的测试ID")
 		return
 	}
 
 	abTest, err := h.abTestService.GetABTest(uint(testID))
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, err.Error())
+		promptRespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, abTest)
+	promptRespondWithJSON(w, http.StatusOK, abTest)
 }
 
 // ListABTests 列出A/B测试
@@ -278,11 +278,11 @@ func (h *PromptTemplateHandler) ListABTests(w http.ResponseWriter, r *http.Reque
 
 	abTests, total, err := h.abTestService.ListABTests(status, page, pageSize)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{
+	promptRespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"ab_tests":  abTests,
 		"total":     total,
 		"page":      page,
@@ -297,23 +297,23 @@ func (h *PromptTemplateHandler) UpdateABTest(w http.ResponseWriter, r *http.Requ
 
 	testID, err := strconv.ParseUint(testIDStr, 10, 32)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的测试ID")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的测试ID")
 		return
 	}
 
 	var req prompt.UpdateABTestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的请求参数")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的请求参数")
 		return
 	}
 
 	abTest, err := h.abTestService.UpdateABTest(uint(testID), &req)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, abTest)
+	promptRespondWithJSON(w, http.StatusOK, abTest)
 }
 
 // CompleteABTest 完成A/B测试
@@ -323,7 +323,7 @@ func (h *PromptTemplateHandler) CompleteABTest(w http.ResponseWriter, r *http.Re
 
 	testID, err := strconv.ParseUint(testIDStr, 10, 32)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的测试ID")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的测试ID")
 		return
 	}
 
@@ -331,16 +331,16 @@ func (h *PromptTemplateHandler) CompleteABTest(w http.ResponseWriter, r *http.Re
 		WinnerTemplateID string `json:"winner_template_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的请求参数")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的请求参数")
 		return
 	}
 
 	if err := h.abTestService.CompleteABTest(uint(testID), req.WinnerTemplateID); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "测试已完成"})
+	promptRespondWithJSON(w, http.StatusOK, map[string]string{"message": "测试已完成"})
 }
 
 // GetABTestStats 获取A/B测试统计
@@ -350,27 +350,27 @@ func (h *PromptTemplateHandler) GetABTestStats(w http.ResponseWriter, r *http.Re
 
 	testID, err := strconv.ParseUint(testIDStr, 10, 32)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "无效的测试ID")
+		promptRespondWithError(w, http.StatusBadRequest, "无效的测试ID")
 		return
 	}
 
 	stats, err := h.abTestService.GetABTestStats(uint(testID))
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		promptRespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, stats)
+	promptRespondWithJSON(w, http.StatusOK, stats)
 }
 
-// respondWithError 返回错误响应
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
+// promptRespondWithError 返回错误响应
+func promptRespondWithError(w http.ResponseWriter, code int, message string) {
+	promptRespondWithJSON(w, code, map[string]string{"error": message})
 }
 
-// respondWithJSON 返回JSON响应
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+// promptRespondWithJSON 返回JSON响应
+func promptRespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteStatus(code)
+	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(payload)
 }

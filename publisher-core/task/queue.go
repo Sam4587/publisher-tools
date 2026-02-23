@@ -18,13 +18,13 @@ import (
 type QueueService struct {
 	db       *gorm.DB
 	queues   map[string]*TaskQueue
-	handlers map[string]TaskHandler
+	handlers map[string]QueueTaskHandler
 	mu       sync.RWMutex
 	config   *QueueConfig
 }
 
-// TaskHandler 任务处理函数
-type TaskHandler func(ctx context.Context, task *database.AsyncTask) error
+// QueueTaskHandler 队列任务处理函数
+type QueueTaskHandler func(ctx context.Context, task *database.AsyncTask) error
 
 // TaskQueue 任务队列
 type TaskQueue struct {
@@ -61,7 +61,7 @@ func NewQueueService(db *gorm.DB, config *QueueConfig) *QueueService {
 	return &QueueService{
 		db:       db,
 		queues:   make(map[string]*TaskQueue),
-		handlers: make(map[string]TaskHandler),
+		handlers: make(map[string]QueueTaskHandler),
 		config:   config,
 	}
 }
@@ -103,7 +103,7 @@ func (s *QueueService) RegisterQueue(name string, concurrency int) error {
 }
 
 // RegisterHandler 注册任务处理器
-func (s *QueueService) RegisterHandler(taskType string, handler TaskHandler) {
+func (s *QueueService) RegisterHandler(taskType string, handler QueueTaskHandler) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

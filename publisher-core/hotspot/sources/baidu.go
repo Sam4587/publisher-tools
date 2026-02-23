@@ -24,6 +24,14 @@ func (s *BaiduSource) Name() string {
 	return "baidu"
 }
 
+func (s *BaiduSource) DisplayName() string {
+	return "Baidu"
+}
+
+func (s *BaiduSource) ID() string {
+	return "baidu"
+}
+
 func (s *BaiduSource) IsEnabled() bool {
 	return s.enabled
 }

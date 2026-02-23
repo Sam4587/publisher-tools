@@ -53,36 +53,36 @@ func NewTrendAnalyzer(db *gorm.DB, aiService AIAnalyzer, config *TrendAnalyzerCo
 	}
 }
 
-// TrendAnalysisResult 趋势分析结果
-type TrendAnalysisResult struct {
-	TopicID          string              `json:"topic_id"`
-	Keywords         []KeywordScore      `json:"keywords"`
-	Sentiment        SentimentAnalysis   `json:"sentiment"`
-	Trend            TrendInfo           `json:"trend"`
-	RelevanceScore   float64             `json:"relevance_score"`
-	ContentSuggestions []ContentSuggestion `json:"content_suggestions"`
-	CompetitorInsights []CompetitorInsight `json:"competitor_insights"`
-	AnalyzedAt       time.Time           `json:"analyzed_at"`
+// AnalyzerTrendResult 分析器趋势分析结果
+type AnalyzerTrendResult struct {
+	TopicID          string                `json:"topic_id"`
+	Keywords         []AnalyzerKeywordScore `json:"keywords"`
+	Sentiment        AnalyzerSentiment     `json:"sentiment"`
+	Trend            AnalyzerTrendInfo     `json:"trend"`
+	RelevanceScore   float64               `json:"relevance_score"`
+	ContentSuggestions []ContentSuggestion  `json:"content_suggestions"`
+	CompetitorInsights []CompetitorInsight  `json:"competitor_insights"`
+	AnalyzedAt       time.Time             `json:"analyzed_at"`
 }
 
-// KeywordScore 关键词评分
-type KeywordScore struct {
+// AnalyzerKeywordScore 分析器关键词评分
+type AnalyzerKeywordScore struct {
 	Keyword   string  `json:"keyword"`
 	Frequency int     `json:"frequency"`
 	Score     float64 `json:"score"`
 	Category  string  `json:"category"` // 技术、娱乐、社会等
 }
 
-// SentimentAnalysis 情感分析
-type SentimentAnalysis struct {
+// AnalyzerSentiment 分析器情感分析
+type AnalyzerSentiment struct {
 	Score       float64 `json:"score"`        // -1 到 1
 	Label       string  `json:"label"`        // positive, negative, neutral
 	Confidence  float64 `json:"confidence"`   // 0 到 1
 	EmotionTags []string `json:"emotion_tags"` // 情感标签
 }
 
-// TrendInfo 趋势信息
-type TrendInfo struct {
+// AnalyzerTrendInfo 分析器趋势信息
+type AnalyzerTrendInfo struct {
 	Direction     string    `json:"direction"`      // up, down, stable
 	ChangeRate    float64   `json:"change_rate"`    // 变化率
 	PeakTime      time.Time `json:"peak_time"`      // 峰值时间
@@ -111,7 +111,7 @@ type CompetitorInsight struct {
 }
 
 // AnalyzeTrend 分析热点趋势
-func (a *TrendAnalyzer) AnalyzeTrend(ctx context.Context, topicID string) (*TrendAnalysisResult, error) {
+func (a *TrendAnalyzer) AnalyzeTrend(ctx context.Context, topicID string) (*AnalyzerTrendResult, error) {
 	// 获取热点数据
 	var topic database.Topic
 	if err := a.db.Where("id = ?", topicID).First(&topic).Error; err != nil {
@@ -142,7 +142,7 @@ func (a *TrendAnalyzer) AnalyzeTrend(ctx context.Context, topicID string) (*Tren
 	// 6. 竞品洞察
 	competitorInsights := a.analyzeCompetitors(ctx, &topic, keywords)
 
-	result := &TrendAnalysisResult{
+	result := &AnalyzerTrendResult{
 		TopicID:            topicID,
 		Keywords:           keywords,
 		Sentiment:          sentiment,
@@ -162,7 +162,7 @@ func (a *TrendAnalyzer) AnalyzeTrend(ctx context.Context, topicID string) (*Tren
 }
 
 // extractKeywords 提取关键词
-func (a *TrendAnalyzer) extractKeywords(topic *database.Topic, history []database.RankHistory) []KeywordScore {
+func (a *TrendAnalyzer) extractKeywords(topic *database.Topic, history []database.RankHistory) []AnalyzerKeywordScore {
 	// 合并标题和描述
 	text := topic.Title + " " + topic.Description
 
@@ -178,12 +178,12 @@ func (a *TrendAnalyzer) extractKeywords(topic *database.Topic, history []databas
 		}
 	}
 
-	// 转换为KeywordScore并排序
-	var keywords []KeywordScore
+	// 转换为AnalyzerKeywordScore并排序
+	var keywords []AnalyzerKeywordScore
 	for word, count := range wordCount {
 		if count >= a.config.KeywordMinFrequency {
 			score := float64(count) * float64(topic.Heat) / 1000.0
-			keywords = append(keywords, KeywordScore{
+			keywords = append(keywords, AnalyzerKeywordScore{
 				Keyword:   word,
 				Frequency: count,
 				Score:     score,
@@ -232,7 +232,7 @@ func (a *TrendAnalyzer) categorizeKeyword(keyword string) string {
 }
 
 // analyzeSentiment 分析情感
-func (a *TrendAnalyzer) analyzeSentiment(ctx context.Context, topic *database.Topic) SentimentAnalysis {
+func (a *TrendAnalyzer) analyzeSentiment(ctx context.Context, topic *database.Topic) AnalyzerSentiment {
 	// 如果有AI服务，使用AI分析
 	if a.aiService != nil {
 		return a.analyzeSentimentWithAI(ctx, topic)
@@ -243,7 +243,7 @@ func (a *TrendAnalyzer) analyzeSentiment(ctx context.Context, topic *database.To
 }
 
 // analyzeSentimentWithAI 使用AI分析情感
-func (a *TrendAnalyzer) analyzeSentimentWithAI(ctx context.Context, topic *database.Topic) SentimentAnalysis {
+func (a *TrendAnalyzer) analyzeSentimentWithAI(ctx context.Context, topic *database.Topic) AnalyzerSentiment {
 	prompt := fmt.Sprintf(`请分析以下热点话题的情感倾向：
 
 标题：%s
@@ -269,7 +269,7 @@ func (a *TrendAnalyzer) analyzeSentimentWithAI(ctx context.Context, topic *datab
 		return a.analyzeSentimentWithRules(topic)
 	}
 
-	var sentiment SentimentAnalysis
+	var sentiment AnalyzerSentiment
 	if err := json.Unmarshal([]byte(result.Content), &sentiment); err != nil {
 		logrus.Warnf("解析AI结果失败: %v", err)
 		return a.analyzeSentimentWithRules(topic)
@@ -279,7 +279,7 @@ func (a *TrendAnalyzer) analyzeSentimentWithAI(ctx context.Context, topic *datab
 }
 
 // analyzeSentimentWithRules 使用规则分析情感
-func (a *TrendAnalyzer) analyzeSentimentWithRules(topic *database.Topic) SentimentAnalysis {
+func (a *TrendAnalyzer) analyzeSentimentWithRules(topic *database.Topic) AnalyzerSentiment {
 	// 简单的情感词典
 	positiveWords := []string{"好", "优秀", "成功", "突破", "创新", "进步", "希望"}
 	negativeWords := []string{"问题", "危机", "失败", "风险", "担忧", "困难", "挑战"}
@@ -307,7 +307,7 @@ func (a *TrendAnalyzer) analyzeSentimentWithRules(topic *database.Topic) Sentime
 		label = "negative"
 	}
 
-	return SentimentAnalysis{
+	return AnalyzerSentiment{
 		Score:      score,
 		Label:      label,
 		Confidence: 0.6,
@@ -316,9 +316,9 @@ func (a *TrendAnalyzer) analyzeSentimentWithRules(topic *database.Topic) Sentime
 }
 
 // analyzeTrendDirection 分析趋势方向
-func (a *TrendAnalyzer) analyzeTrendDirection(topic *database.Topic, history []database.RankHistory) TrendInfo {
+func (a *TrendAnalyzer) analyzeTrendDirection(topic *database.Topic, history []database.RankHistory) AnalyzerTrendInfo {
 	if len(history) < 2 {
-		return TrendInfo{
+		return AnalyzerTrendInfo{
 			Direction:      "stable",
 			ChangeRate:     0,
 			PredictedTrend: "stable",
@@ -364,7 +364,7 @@ func (a *TrendAnalyzer) analyzeTrendDirection(topic *database.Topic, history []d
 		}
 	}
 
-	return TrendInfo{
+	return AnalyzerTrendInfo{
 		Direction:       direction,
 		ChangeRate:      changeRate,
 		PeakTime:        peakTime,
@@ -374,7 +374,7 @@ func (a *TrendAnalyzer) analyzeTrendDirection(topic *database.Topic, history []d
 }
 
 // calculateRelevanceScore 计算相关性评分
-func (a *TrendAnalyzer) calculateRelevanceScore(topic *database.Topic, keywords []KeywordScore, sentiment SentimentAnalysis) float64 {
+func (a *TrendAnalyzer) calculateRelevanceScore(topic *database.Topic, keywords []AnalyzerKeywordScore, sentiment AnalyzerSentiment) float64 {
 	score := 0.0
 
 	// 热度评分（0-40分）
@@ -409,7 +409,7 @@ func (a *TrendAnalyzer) calculateRelevanceScore(topic *database.Topic, keywords 
 }
 
 // generateContentSuggestions 生成内容建议
-func (a *TrendAnalyzer) generateContentSuggestions(topic *database.Topic, keywords []KeywordScore, sentiment SentimentAnalysis) []ContentSuggestion {
+func (a *TrendAnalyzer) generateContentSuggestions(topic *database.Topic, keywords []AnalyzerKeywordScore, sentiment AnalyzerSentiment) []ContentSuggestion {
 	var suggestions []ContentSuggestion
 
 	// 提取前3个关键词
@@ -455,7 +455,7 @@ func (a *TrendAnalyzer) generateContentSuggestions(topic *database.Topic, keywor
 }
 
 // analyzeCompetitors 分析竞品
-func (a *TrendAnalyzer) analyzeCompetitors(ctx context.Context, topic *database.Topic, keywords []KeywordScore) []CompetitorInsight {
+func (a *TrendAnalyzer) analyzeCompetitors(ctx context.Context, topic *database.Topic, keywords []AnalyzerKeywordScore) []CompetitorInsight {
 	// 简化的竞品分析
 	var insights []CompetitorInsight
 
@@ -489,7 +489,7 @@ func (a *TrendAnalyzer) getTopicHistory(topicID string, hours int) ([]database.R
 }
 
 // saveAnalysisResult 保存分析结果
-func (a *TrendAnalyzer) saveAnalysisResult(result *TrendAnalysisResult) error {
+func (a *TrendAnalyzer) saveAnalysisResult(result *AnalyzerTrendResult) error {
 	// 将结果序列化为JSON
 	resultJSON, err := json.Marshal(result)
 	if err != nil {

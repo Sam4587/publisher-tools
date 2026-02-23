@@ -10,28 +10,56 @@ import { getPlatforms, checkLogin, publishAsync } from "@/lib/api"
 import type { Platform, AccountStatus } from "@/types/api"
 
 
-// 文件上传函数
-async function uploadFile(file: File): Promise<string | null> {
-  const formData = new FormData()
-  formData.append('file', file)
+// 文件上传函数（带进度回调）
+async function uploadFileWithProgress(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest()
+    const formData = new FormData()
+    formData.append('file', file)
 
-  try {
-    const response = await fetch('/api/v1/storage/upload', {
-      method: 'POST',
-      body: formData,
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onProgress) {
+        const progress = Math.round((e.loaded / e.total) * 100)
+        onProgress(progress)
+      }
     })
 
-    const result = await response.json()
-    if (result.success && result.data) {
-      return result.data.storage_path
-    } else {
-      console.error('文件上传失败:', result.error)
-      return null
-    }
-  } catch (error) {
-    console.error('文件上传失败:', error)
-    return null
-  }
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        try {
+          const result = JSON.parse(xhr.responseText)
+          if (result.success && result.data) {
+            resolve(result.data.path || result.data.storage_path)
+          } else {
+            console.error('文件上传失败:', result.error)
+            resolve(null)
+          }
+        } catch (error) {
+          console.error('解析响应失败:', error)
+          resolve(null)
+        }
+      } else {
+        console.error('文件上传失败:', xhr.statusText)
+        resolve(null)
+      }
+    })
+
+    xhr.addEventListener('error', () => {
+      console.error('文件上传失败: 网络错误')
+      resolve(null)
+    })
+
+    xhr.open('POST', '/api/v1/storage/upload')
+    xhr.send(formData)
+  })
+}
+
+// 文件上传函数（兼容旧接口）
+async function uploadFile(file: File): Promise<string | null> {
+  return uploadFileWithProgress(file)
 }
 
 const platformNames: Record<Platform, string> = {

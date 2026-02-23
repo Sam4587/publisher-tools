@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -83,11 +82,14 @@ func (m *EnhancedTaskManager) ExecuteWithRetry(ctx context.Context, taskID strin
 // ExecuteWithProgress 带进度追踪的任务执行
 func (m *EnhancedTaskManager) ExecuteWithProgress(ctx context.Context, taskID string, progressCallback func(int, string)) error {
 	// 订阅进度更新
-	_, cancel := m.progressTracker.Subscribe(taskID, func(detail ProgressDetail) {
+	cancel, err := m.progressTracker.Subscribe(taskID, func(detail ProgressDetail) {
 		if progressCallback != nil {
 			progressCallback(detail.Progress, detail.Message)
 		}
 	})
+	if err != nil {
+		return err
+	}
 	defer cancel()
 
 	return m.Execute(ctx, taskID)

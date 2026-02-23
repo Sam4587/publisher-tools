@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"publisher-core/ai"
+	"publisher-core/ai/provider"
 	"sort"
 	"strings"
 	"time"
@@ -67,9 +68,9 @@ func (h *OutlineGenerator) Execute(ctx context.Context, config map[string]interf
 }`, topic, targetLength, style)
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   1500,
 		Temperature: 0.7,
 	})
@@ -87,9 +88,9 @@ func (h *OutlineGenerator) Execute(ctx context.Context, config map[string]interf
 	}
 
 	return map[string]interface{}{
-		"outline":      outline,
-		"tokens_used":  result.TokensUsed,
-		"generated_at": time.Now().Format(time.RFC3339),
+		"outline":       outline,
+		"tokens_used":   result.InputTokens + result.OutputTokens,
+		"generated_at":  time.Now().Format(time.RFC3339),
 	}, nil
 }
 
@@ -151,9 +152,9 @@ func (h *ContentClusterer) Execute(ctx context.Context, config map[string]interf
 }`, clusterCount, strings.Join(contentTexts, "\n---\n"))
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   2000,
 		Temperature: 0.3,
 	})
@@ -171,7 +172,7 @@ func (h *ContentClusterer) Execute(ctx context.Context, config map[string]interf
 
 	return map[string]interface{}{
 		"clusters":     clusterResult,
-		"tokens_used":  result.TokensUsed,
+		"tokens_used":  result.InputTokens + result.OutputTokens,
 		"clustered_at": time.Now().Format(time.RFC3339),
 	}, nil
 }
@@ -221,9 +222,9 @@ func (h *ContentClassifier) Execute(ctx context.Context, config map[string]inter
 }`, content, strings.Join(categories, ", "))
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   500,
 		Temperature: 0.2,
 	})
@@ -241,7 +242,7 @@ func (h *ContentClassifier) Execute(ctx context.Context, config map[string]inter
 
 	return map[string]interface{}{
 		"classification": classifyResult,
-		"tokens_used":    result.TokensUsed,
+		"tokens_used":    result.InputTokens + result.OutputTokens,
 		"classified_at":  time.Now().Format(time.RFC3339),
 	}, nil
 }
@@ -297,9 +298,9 @@ func (h *TitleGenerator) Execute(ctx context.Context, config map[string]interfac
 }`, count, content, maxLength)
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   1000,
 		Temperature: 0.8,
 	})
@@ -317,7 +318,7 @@ func (h *TitleGenerator) Execute(ctx context.Context, config map[string]interfac
 
 	return map[string]interface{}{
 		"titles":       titleResult,
-		"tokens_used":  result.TokensUsed,
+		"tokens_used":  result.InputTokens + result.OutputTokens,
 		"generated_at": time.Now().Format(time.RFC3339),
 	}, nil
 }
@@ -359,9 +360,9 @@ func (h *DescriptionGenerator) Execute(ctx context.Context, config map[string]in
 请直接输出描述内容。`, content, maxLength, map[bool]string{true: "4. 包含关键词\n"}[includeKeywords])
 
 	// 调用 AI 服务
-	result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+	result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 		Model:       "deepseek-chat",
-		Prompt:      prompt,
+		Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 		MaxTokens:   300,
 		Temperature: 0.6,
 	})
@@ -371,7 +372,7 @@ func (h *DescriptionGenerator) Execute(ctx context.Context, config map[string]in
 
 	return map[string]interface{}{
 		"description":  result.Content,
-		"tokens_used":  result.TokensUsed,
+		"tokens_used":  result.InputTokens + result.OutputTokens,
 		"generated_at": time.Now().Format(time.RFC3339),
 	}, nil
 }
@@ -434,9 +435,9 @@ func (h *ContentFilter) Execute(ctx context.Context, config map[string]interface
 }`, contentText, strings.Join(filterCriteria, ", "))
 
 		// 调用 AI 服务
-		result, err := h.aiService.Generate(ctx, &ai.GenerateOptions{
+		result, err := h.aiService.Generate(ctx, &provider.GenerateOptions{
 			Model:       "deepseek-chat",
-			Prompt:      prompt,
+			Messages:    []provider.Message{{Role: provider.RoleUser, Content: prompt}},
 			MaxTokens:   300,
 			Temperature: 0.2,
 		})

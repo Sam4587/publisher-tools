@@ -94,6 +94,10 @@ func main() {
 	hotspotAPI := hotspot.NewAPIHandler(hotspotService)
 	server.RegisterRoutes(hotspotAPI)
 
+	// 注册存储API路由
+	storageHandlers := api.NewStorageHandlers(store, storageDir)
+	storageHandlers.RegisterRoutes(server.Router())
+
 	analyticsStorage, err := analytics.NewJSONStorage(dataDir + "/analytics")
 	if err != nil {
 		logrus.Warnf("Failed to create analytics storage: %v", err)

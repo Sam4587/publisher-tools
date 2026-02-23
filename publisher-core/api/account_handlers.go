@@ -18,14 +18,14 @@ import (
 // AccountHandler 账号管理 API 处理器
 type AccountHandler struct {
 	accountService *account.AccountService
-	poolManager    *account.PoolManager
+	poolService    *account.PoolService
 }
 
 // NewAccountHandler 创建账号管理 API 处理器
-func NewAccountHandler(accountService *account.AccountService, poolManager *account.PoolManager) *AccountHandler {
+func NewAccountHandler(accountService *account.AccountService, poolService *account.PoolService) *AccountHandler {
 	return &AccountHandler{
 		accountService: accountService,
-		poolManager:    poolManager,
+		poolService:    poolService,
 	}
 }
 
@@ -454,7 +454,13 @@ func (h *AccountHandler) CreatePool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	pool, err := h.poolManager.CreatePool(ctx, req.Name, req.Platform, req.Strategy)
+	pool, err := h.poolService.CreatePool(ctx, &account.CreatePoolRequest{
+		Name:        req.Name,
+		Platform:    req.Platform,
+		Description: req.Description,
+		Strategy:    account.PoolStrategy(req.Strategy),
+		MaxSize:     req.MaxSize,
+	})
 	if err != nil {
 		jsonError(w, "CREATE_POOL_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -469,7 +475,9 @@ func (h *AccountHandler) ListPools(w http.ResponseWriter, r *http.Request) {
 	platform := r.URL.Query().Get("platform")
 
 	ctx := r.Context()
-	pools, err := h.poolManager.ListPools(ctx, platform)
+	pools, _, err := h.poolService.ListPools(ctx, &account.ListPoolsRequest{
+		Platform: platform,
+	})
 	if err != nil {
 		jsonError(w, "LIST_POOLS_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -485,7 +493,7 @@ func (h *AccountHandler) GetPool(w http.ResponseWriter, r *http.Request) {
 	poolID := vars["id"]
 
 	ctx := r.Context()
-	pool, err := h.poolManager.GetPool(ctx, poolID)
+	pool, err := h.poolService.GetPool(ctx, poolID)
 	if err != nil {
 		jsonError(w, "POOL_NOT_FOUND", err.Error(), http.StatusNotFound)
 		return
@@ -514,7 +522,14 @@ func (h *AccountHandler) UpdatePool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if err := h.poolManager.UpdatePool(ctx, poolID, req.Name, req.Strategy); err != nil {
+	isActive := req.IsActive
+	if err := h.poolService.UpdatePool(ctx, poolID, &account.UpdatePoolRequest{
+		Name:        req.Name,
+		Description: req.Description,
+		Strategy:    account.PoolStrategy(req.Strategy),
+		MaxSize:     req.MaxSize,
+		IsActive:    &isActive,
+	}); err != nil {
 		jsonError(w, "UPDATE_POOL_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -531,7 +546,7 @@ func (h *AccountHandler) DeletePool(w http.ResponseWriter, r *http.Request) {
 	poolID := vars["id"]
 
 	ctx := r.Context()
-	if err := h.poolManager.DeletePool(ctx, poolID); err != nil {
+	if err := h.poolService.DeletePool(ctx, poolID); err != nil {
 		jsonError(w, "DELETE_POOL_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -558,7 +573,7 @@ func (h *AccountHandler) AddPoolMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if err := h.poolManager.AddAccountToPool(ctx, poolID, req.AccountID, req.Priority); err != nil {
+	if err := h.poolService.AddMember(ctx, poolID, req.AccountID, req.Priority); err != nil {
 		jsonError(w, "ADD_MEMBER_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -576,7 +591,7 @@ func (h *AccountHandler) RemovePoolMember(w http.ResponseWriter, r *http.Request
 	accountID := vars["accountId"]
 
 	ctx := r.Context()
-	if err := h.poolManager.RemoveAccountFromPool(ctx, poolID, accountID); err != nil {
+	if err := h.poolService.RemoveMember(ctx, poolID, accountID); err != nil {
 		jsonError(w, "REMOVE_MEMBER_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -593,7 +608,7 @@ func (h *AccountHandler) SelectAccountFromPool(w http.ResponseWriter, r *http.Re
 	poolID := vars["id"]
 
 	ctx := r.Context()
-	selectedAccount, err := h.poolManager.SelectAccount(ctx, poolID)
+	selectedAccount, err := h.poolService.SelectAccountFromPool(ctx, poolID)
 	if err != nil {
 		jsonError(w, "SELECT_ACCOUNT_FAILED", err.Error(), http.StatusInternalServerError)
 		return

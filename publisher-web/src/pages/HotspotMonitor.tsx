@@ -35,16 +35,20 @@ interface FilterOptions {
 
 export default function HotspotMonitor() {
   const [topics, setTopics] = useState<HotTopic[]>([])
+  const [filteredTopics, setFilteredTopics] = useState<HotTopic[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedTopics, setSelectedTopics] = useState<HotTopic[]>([])
   const [showAIPanel, setShowAIPanel] = useState(false)
+  const [filters, setFilters] = useState<FilterOptions>({})
 
   const fetchTopics = async () => {
     try {
       const response = await getHotTopics()
       if (response.success && response.data) {
-        setTopics(Array.isArray(response.data) ? response.data : (response.data as any).topics || [])
+        const topicsData = Array.isArray(response.data) ? response.data : (response.data as any).topics || []
+        setTopics(topicsData)
+        setFilteredTopics(topicsData)
       }
     } catch (error) {
       console.error('获取热点话题失败:', error)
@@ -58,13 +62,60 @@ export default function HotspotMonitor() {
     fetchTopics()
   }, [])
 
+  // 应用筛选条件
+  useEffect(() => {
+    let result = [...topics]
+
+    // 按分类筛选
+    if (filters.category && filters.category !== 'all') {
+      result = result.filter(topic => topic.category === filters.category)
+    }
+
+    // 按平台筛选
+    if (filters.platform && filters.platform !== 'all') {
+      result = result.filter(topic => topic.source === filters.platform)
+    }
+
+    // 按关键词筛选
+    if (filters.keyword) {
+      const keyword = filters.keyword.toLowerCase()
+      result = result.filter(topic => 
+        topic.title.toLowerCase().includes(keyword) ||
+        (topic.description && topic.description.toLowerCase().includes(keyword)) ||
+        (topic.keywords && topic.keywords.some(k => k.toLowerCase().includes(keyword)))
+      )
+    }
+
+    // 按趋势筛选
+    if (filters.trend && filters.trend !== 'all') {
+      result = result.filter(topic => topic.trend === filters.trend)
+    }
+
+    // 排序
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case 'heat':
+          result.sort((a, b) => b.heat - a.heat)
+          break
+        case 'date':
+          result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+          break
+        case 'suitability':
+          result.sort((a, b) => (b.suitability || 0) - (a.suitability || 0))
+          break
+      }
+    }
+
+    setFilteredTopics(result)
+  }, [topics, filters])
+
   const handleRefresh = () => {
     setRefreshing(true)
     fetchTopics()
   }
 
-  const handleFilterChange = (_newFilters: FilterOptions) => {
-    // Filter logic would be implemented here
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters)
   }
 
   const handleSelectTopic = (topic: HotTopic) => {
@@ -77,10 +128,10 @@ export default function HotspotMonitor() {
   }
 
   const handleSelectAll = () => {
-    if (selectedTopics.length === topics.length) {
+    if (selectedTopics.length === filteredTopics.length) {
       setSelectedTopics([])
     } else {
-      setSelectedTopics(topics)
+      setSelectedTopics(filteredTopics)
     }
   }
 
@@ -212,7 +263,7 @@ export default function HotspotMonitor() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                {selectedTopics.length === topics.length ? '取消全选' : '全选'}
+                {selectedTopics.length === filteredTopics.length ? '取消全选' : '全选'}
               </Button>
               <Badge variant="secondary">
                 已选择 {selectedTopics.length} 个话题
@@ -221,7 +272,7 @@ export default function HotspotMonitor() {
           </div>
 
           <div className="grid gap-4">
-            {topics.map((topic, index) => (
+            {filteredTopics.map((topic, index) => (
               <Card
                 key={topic._id}
                 className={`cursor-pointer transition-all hover:shadow-md ${

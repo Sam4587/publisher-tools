@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"publisher-core/cache"
+
+	"github.com/gorilla/mux"
 )
 
 // CacheHandler 缓存管理处理器

@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"context"
 	"encoding/json"
 	"sync"
 	"time"
@@ -76,9 +75,12 @@ func (s *ProgressService) handleProgressUpdate(progress *task.TaskProgress) {
 	}
 
 	// 获取任务状态
-	task, err := s.stateService.GetProgress(progress.TaskID)
+	taskProgress, err := s.stateService.GetProgress(progress.TaskID)
 	if err == nil {
-		msg.Status = string(task.Status)
+		msg.Status = "running" // 默认状态
+		if taskProgress.Progress >= 100 {
+			msg.Status = "completed"
+		}
 	}
 
 	// 保存到内存历史

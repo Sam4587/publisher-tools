@@ -74,6 +74,8 @@ temp/
 
 # IDE tools
 .arts/
+.joycode/
+.lingma/
 
 # Test files
 test-*.js

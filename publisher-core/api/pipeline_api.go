@@ -8,7 +8,6 @@ import (
 	"publisher-core/pipeline"
 	"publisher-core/websocket"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -281,7 +280,7 @@ func (api *PipelineAPI) handleExecutePipeline(w http.ResponseWriter, r *http.Req
 // handleExecutions 处理执行列表
 func (api *PipelineAPI) handleExecutions(w http.ResponseWriter, r *http.Request) {
 	// 获取查询参数
-	status := r.URL.Query().Get("status")
+	_ = r.URL.Query().Get("status")
 	limitStr := r.URL.Query().Get("limit")
 	limit := 10
 
@@ -290,6 +289,7 @@ func (api *PipelineAPI) handleExecutions(w http.ResponseWriter, r *http.Request)
 			limit = l
 		}
 	}
+	_ = limit // 使用limit避免编译警告
 
 	// TODO: 从存储中获取执行列表
 	// 这里返回模拟数据

@@ -48,6 +48,10 @@ func (s *RSSSource) Name() string {
 	return s.name
 }
 
+func (s *RSSSource) DisplayName() string {
+	return s.name
+}
+
 func (s *RSSSource) IsEnabled() bool {
 	return s.enabled
 }

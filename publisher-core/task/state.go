@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -222,7 +221,7 @@ func (s *StateService) GetTaskResult(taskID string, result interface{}) error {
 }
 
 // ListTasks 列出任务
-func (s *StateService) ListTasks(filter *TaskFilter) ([]database.AsyncTask, int64, error) {
+func (s *StateService) ListTasks(filter *StateTaskFilter) ([]database.AsyncTask, int64, error) {
 	query := s.db.Model(&database.AsyncTask{})
 
 	if filter.QueueName != "" {
@@ -260,8 +259,8 @@ func (s *StateService) ListTasks(filter *TaskFilter) ([]database.AsyncTask, int6
 	return tasks, total, nil
 }
 
-// TaskFilter 任务过滤条件
-type TaskFilter struct {
+// StateTaskFilter 任务状态过滤条件
+type StateTaskFilter struct {
 	QueueName string `form:"queue_name"`
 	TaskType  string `form:"task_type"`
 	Status    string `form:"status"`
@@ -345,18 +344,18 @@ type TaskStatistics struct {
 	AvgDurationMs float64 `json:"avg_duration_ms"`
 }
 
-// RetryManager 重试管理器
-type RetryManager struct {
+// StateRetryManager 状态重试管理器
+type StateRetryManager struct {
 	db *gorm.DB
 }
 
-// NewRetryManager 创建重试管理器
-func NewRetryManager(db *gorm.DB) *RetryManager {
-	return &RetryManager{db: db}
+// NewStateRetryManager 创建状态重试管理器
+func NewStateRetryManager(db *gorm.DB) *StateRetryManager {
+	return &StateRetryManager{db: db}
 }
 
 // GetRetryableTasks 获取可重试的任务
-func (m *RetryManager) GetRetryableTasks() ([]database.AsyncTask, error) {
+func (m *StateRetryManager) GetRetryableTasks() ([]database.AsyncTask, error) {
 	var tasks []database.AsyncTask
 	err := m.db.Where("status = ? AND retry_count < max_retries", database.TaskStatusFailed).
 		Order("created_at ASC").
@@ -367,7 +366,7 @@ func (m *RetryManager) GetRetryableTasks() ([]database.AsyncTask, error) {
 }
 
 // RetryTask 重试任务
-func (m *RetryManager) RetryTask(taskID string) error {
+func (m *StateRetryManager) RetryTask(taskID string) error {
 	return m.db.Transaction(func(tx *gorm.DB) error {
 		var task database.AsyncTask
 		if err := tx.Where("task_id = ?", taskID).First(&task).Error; err != nil {
@@ -392,7 +391,7 @@ func (m *RetryManager) RetryTask(taskID string) error {
 }
 
 // CleanupOldTasks 清理旧任务
-func (m *RetryManager) CleanupOldTasks(olderThan time.Duration) (int64, error) {
+func (m *StateRetryManager) CleanupOldTasks(olderThan time.Duration) (int64, error) {
 	cutoff := time.Now().Add(-olderThan)
 
 	result := m.db.Where("status IN ? AND created_at < ?",
