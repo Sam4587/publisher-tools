@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RefreshCw, TrendingUp, Sparkles, Video, Flame } from 'lucide-react'
+import { RefreshCw, TrendingUp, Sparkles, Video, Flame, AlertCircle } from 'lucide-react'
 import HotspotTrendChart from '@/components/HotspotTrendChart'
 import RankTimelineChart from '@/components/RankTimelineChart'
 import EnhancedAIAnalysisPanel from '@/components/EnhancedAIAnalysisPanel'
@@ -33,6 +33,27 @@ interface FilterOptions {
   trend?: string
 }
 
+// 后端数据字段映射
+// GlobalFilterBar 传递的是英文，后端 category 是中文，需要映射
+const categoryMapping: Record<string, string> = {
+  'news': '新闻',
+  'entertainment': '娱乐',
+  'sports': '体育',
+  'tech': '科技',
+  'finance': '财经',
+}
+
+// GlobalFilterBar 传递的是英文，后端 source 也是英文，不需要映射
+// 但为了显示，需要反向映射
+const platformDisplayNames: Record<string, string> = {
+  'weibo': '微博',
+  'douyin': '抖音',
+  'toutiao': '今日头条',
+  'zhihu': '知乎',
+  'bilibili': 'B站',
+  'xiaohongshu': '小红书',
+}
+
 export default function HotspotMonitor() {
   const [topics, setTopics] = useState<HotTopic[]>([])
   const [filteredTopics, setFilteredTopics] = useState<HotTopic[]>([])
@@ -41,17 +62,49 @@ export default function HotspotMonitor() {
   const [selectedTopics, setSelectedTopics] = useState<HotTopic[]>([])
   const [showAIPanel, setShowAIPanel] = useState(false)
   const [filters, setFilters] = useState<FilterOptions>({})
+  const [error, setError] = useState<string | null>(null)
 
   const fetchTopics = async () => {
     try {
+      setError(null)
       const response = await getHotTopics()
+      console.log('API响应:', response)
+
       if (response.success && response.data) {
-        const topicsData = Array.isArray(response.data) ? response.data : (response.data as any).topics || []
-        setTopics(topicsData)
-        setFilteredTopics(topicsData)
+        // 处理多种可能的响应格式
+        let topicsData: HotTopic[] = []
+
+        if (Array.isArray(response.data)) {
+          topicsData = response.data
+        } else if ((response.data as any).topics && Array.isArray((response.data as any).topics)) {
+          topicsData = (response.data as any).topics
+        } else if ((response.data as any).data && Array.isArray((response.data as any).data)) {
+          topicsData = (response.data as any).data
+        } else {
+          console.warn('未知的响应格式:', response.data)
+        }
+
+        console.log('解析后的热点数据:', topicsData)
+
+        if (topicsData.length > 0) {
+          setTopics(topicsData)
+          setFilteredTopics(topicsData)
+        } else {
+          console.warn('热点数据为空')
+          setTopics([])
+          setFilteredTopics([])
+        }
+      } else {
+        console.error('API返回失败:', response)
+        setError(response.message || '获取热点数据失败')
+        setTopics([])
+        setFilteredTopics([])
       }
     } catch (error) {
       console.error('获取热点话题失败:', error)
+      setError('网络请求失败，请检查后端服务是否正常运行')
+      setTopics([])
+      setFilteredTopics([])
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -60,39 +113,66 @@ export default function HotspotMonitor() {
 
   useEffect(() => {
     fetchTopics()
+    // 设置自动刷新，每5分钟刷新一次
+    const interval = setInterval(() => {
+      fetchTopics()
+    }, 5 * 60 * 1000) // 5分钟
+
+    return () => clearInterval(interval)
   }, [])
 
   // 应用筛选条件
   useEffect(() => {
+    console.log('开始应用筛选条件:', filters)
+    console.log('原始数据数量:', topics.length)
+
     let result = [...topics]
 
-    // 按分类筛选
+    // 按分类筛选 - GlobalFilterBar 传递的是英文，需要转换为中文匹配后端数据
     if (filters.category && filters.category !== 'all') {
-      result = result.filter(topic => topic.category === filters.category)
+      const targetCategory = categoryMapping[filters.category] || filters.category
+      console.log(`分类筛选: ${filters.category} -> ${targetCategory}`)
+      result = result.filter(topic => {
+        const match = topic.category === targetCategory
+        console.log(`话题 "${topic.title}" 的分类 "${topic.category}" 是否匹配 "${targetCategory}": ${match}`)
+        return match
+      })
+      console.log(`分类筛选后结果数量: ${result.length}`)
     }
 
-    // 按平台筛选
+    // 按平台筛选 - GlobalFilterBar 传递的是英文，后端 source 也是英文，直接匹配
     if (filters.platform && filters.platform !== 'all') {
-      result = result.filter(topic => topic.source === filters.platform)
+      console.log(`平台筛选: ${filters.platform}`)
+      result = result.filter(topic => {
+        const match = topic.source === filters.platform
+        console.log(`话题 "${topic.title}" 的来源 "${topic.source}" 是否匹配 "${filters.platform}": ${match}`)
+        return match
+      })
+      console.log(`平台筛选后结果数量: ${result.length}`)
     }
 
     // 按关键词筛选
     if (filters.keyword) {
       const keyword = filters.keyword.toLowerCase()
-      result = result.filter(topic => 
+      console.log(`关键词筛选: ${keyword}`)
+      result = result.filter(topic =>
         topic.title.toLowerCase().includes(keyword) ||
         (topic.description && topic.description.toLowerCase().includes(keyword)) ||
         (topic.keywords && topic.keywords.some(k => k.toLowerCase().includes(keyword)))
       )
+      console.log(`关键词筛选后结果数量: ${result.length}`)
     }
 
     // 按趋势筛选
     if (filters.trend && filters.trend !== 'all') {
+      console.log(`趋势筛选: ${filters.trend}`)
       result = result.filter(topic => topic.trend === filters.trend)
+      console.log(`趋势筛选后结果数量: ${result.length}`)
     }
 
     // 排序
     if (filters.sortBy) {
+      console.log(`排序方式: ${filters.sortBy}`)
       switch (filters.sortBy) {
         case 'heat':
           result.sort((a, b) => b.heat - a.heat)
@@ -106,6 +186,7 @@ export default function HotspotMonitor() {
       }
     }
 
+    console.log('最终筛选结果数量:', result.length)
     setFilteredTopics(result)
   }, [topics, filters])
 
@@ -115,6 +196,7 @@ export default function HotspotMonitor() {
   }
 
   const handleFilterChange = (newFilters: FilterOptions) => {
+    console.log('筛选条件变化:', newFilters)
     setFilters(newFilters)
   }
 
@@ -211,10 +293,50 @@ export default function HotspotMonitor() {
         </div>
       </div>
 
+      {/* 错误提示 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-medium text-red-800">数据加载失败</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                setError(null)
+                setLoading(true)
+                fetchTopics()
+              }}
+            >
+              重试
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 数据为空提示 */}
+      {!error && topics.length === 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <AlertCircle className="h-12 w-12 text-yellow-600 mx-auto mb-3" />
+          <h3 className="font-medium text-yellow-800 mb-2">暂无热点数据</h3>
+          <p className="text-sm text-yellow-700 mb-4">当前没有可用的热点话题数据，请点击刷新按钮获取最新数据</p>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            立即刷新
+          </Button>
+        </div>
+      )}
+
       {/* 全局筛选 */}
       <GlobalFilterBar
         onFilterChange={handleFilterChange}
-        platforms={['weibo', 'douyin', 'zhihu', 'baidu']}
+        platforms={['weibo', 'douyin', 'zhihu', 'bilibili']}
         categories={['news', 'entertainment', 'sports', 'tech', 'finance']}
         placeholder="搜索热点话题..."
       />
@@ -268,61 +390,74 @@ export default function HotspotMonitor() {
               <Badge variant="secondary">
                 已选择 {selectedTopics.length} 个话题
               </Badge>
+              {filteredTopics.length > 0 && (
+                <Badge variant="outline">
+                  共 {filteredTopics.length} 个话题
+                </Badge>
+              )}
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {filteredTopics.map((topic, index) => (
-              <Card
-                key={topic._id}
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  selectedTopics.find(t => t._id === topic._id)
-                    ? 'border-blue-500 bg-blue-50'
-                    : ''
-                }`}
-                onClick={() => handleSelectTopic(topic)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                          index < 3
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {index + 1}
+          {filteredTopics.length === 0 ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <h3 className="font-medium text-gray-800 mb-2">没有找到匹配的话题</h3>
+              <p className="text-sm text-gray-600">请尝试调整筛选条件或刷新数据</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredTopics.map((topic, index) => (
+                <Card
+                  key={topic._id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    selectedTopics.find(t => t._id === topic._id)
+                      ? 'border-blue-500 bg-blue-50'
+                      : ''
+                  }`}
+                  onClick={() => handleSelectTopic(topic)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                            index < 3
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {index + 1}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium line-clamp-2">{topic.title}</div>
-                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                        <span>{topic.source}</span>
-                        <span>•</span>
-                        <span className="text-blue-600 font-medium">
-                          热度: {topic.heat?.toLocaleString()}
-                        </span>
-                        {topic.publishedAt && (
-                          <>
-                            <span>•</span>
-                            <span>
-                              {new Date(topic.publishedAt).toLocaleDateString()}
-                            </span>
-                          </>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium line-clamp-2">{topic.title}</div>
+                        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                          <span>{platformDisplayNames[topic.source] || topic.source}</span>
+                          <span>•</span>
+                          <span className="text-blue-600 font-medium">
+                            热度: {topic.heat?.toLocaleString()}
+                          </span>
+                          {topic.publishedAt && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                {new Date(topic.publishedAt).toLocaleDateString()}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
+                      {selectedTopics.find(t => t._id === topic._id) && (
+                        <Badge variant="default" className="flex-shrink-0">
+                          已选择
+                        </Badge>
+                      )}
                     </div>
-                    {selectedTopics.find(t => t._id === topic._id) && (
-                      <Badge variant="default" className="flex-shrink-0">
-                        已选择
-                      </Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* 视频处理 */}

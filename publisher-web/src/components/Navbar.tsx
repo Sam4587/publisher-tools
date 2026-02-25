@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Menu } from "lucide-react"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 
 const navItems = [
   { path: "/", label: "仪表盘", icon: "home" },
@@ -75,7 +75,11 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-64">
-              <div className="flex flex-col gap-2 mt-8">
+              <SheetHeader>
+                <SheetTitle>导航菜单</SheetTitle>
+                <SheetDescription>选择要访问的页面</SheetDescription>
+              </SheetHeader>
+              <div className="flex flex-col gap-2 mt-4">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}

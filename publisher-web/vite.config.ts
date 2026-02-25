@@ -10,36 +10,30 @@ export default defineConfig({
     host: true,
     allowedHosts: ['.monkeycode-ai.online'],
     proxy: {
+      // 热点监控API代理到Node.js服务 (3001端口)
+      '/api/hot-topics': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 平台账号管理API代理到Node.js服务 (3001端口)
       '/api/v1/publisher': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       },
-      '/api/platforms': {
+      // AI内容生成API代理到Node.js服务 (3001端口)
+      '/api/v1/ai': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       },
-      '/api/tasks': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/publish': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/health': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      },
+      // 其他API请求代理到Go服务 (8080端口)
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-      }
+      },
     },
     open: false,
   },

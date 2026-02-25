@@ -94,3 +94,8 @@ api_keys.json
 # Database files
 publisher.db
 *.db-journal
+
+# All .env files in subdirectories
+**/.env
+**/.env.local
+**/.env.*.local

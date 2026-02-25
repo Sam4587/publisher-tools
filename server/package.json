@@ -4,8 +4,8 @@
   "description": "Publisher Tools Server",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node hotspot-server-advanced.js",
+    "dev": "nodemon hotspot-server-advanced.js",
     "test": "node test-server.js"
   },
   "dependencies": {

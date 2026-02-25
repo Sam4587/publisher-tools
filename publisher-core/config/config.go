@@ -147,7 +147,7 @@ func GetNotifyChannelConfig(channel string) (webhook string, config map[string]s
 // Validate 验证必要配置
 func (c *Config) Validate() error {
 	// 检查是否有至少一个 AI 提供商配置
-	providers := []string{"OPENROUTER", "GROQ", "GOOGLE", "DEEPSEEK"}
+	providers := []string{"OPENROUTER", "GROQ", "GOOGLE", "DEEPSEEK", "OLLAMA"}
 	hasProvider := false
 	for _, p := range providers {
 		if os.Getenv(p+"_API_KEY") != "" {

@@ -10,6 +10,10 @@ var logFile = WScript.Arguments(2);
 // Change to working directory
 shell.CurrentDirectory = workDir;
 
+// 设置环境变量禁用WSL检测
+shell.Environment("Process")("npm_config_use_wsl") = "false";
+shell.Environment("Process")("ELECTRON_NO_ATTACH_CONSOLE") = "1";
+
 // Run command with output redirected to log file
-var fullCmd = "cmd /c " + cmd + " >> \"" + logFile + "\" 2>&1";
+var fullCmd = "cmd /c set npm_config_use_wsl=false && set ELECTRON_NO_ATTACH_CONSOLE=1 && " + cmd + " >> \"" + logFile + "\" 2>&1";
 shell.Run(fullCmd, 0, false);

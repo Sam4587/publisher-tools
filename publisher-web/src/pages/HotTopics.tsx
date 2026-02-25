@@ -199,21 +199,65 @@ export default function HotTopics() {
   async function loadTopics() {
     setLoading(true)
     try {
+      console.log('=== 开始加载话题数据 ===')
+      console.log('当前筛选条件:', { search, category, selectedSource })
+
       const result = await getHotTopics({
         search,
         category: category === 'all' ? undefined : category,
         limit: 50,
       })
-      if (result.success && result.data && result.data.length > 0) {
-        // 前端筛选数据源
-        let filtered = result.data
-        if (selectedSource !== 'all') {
-          filtered = result.data.filter(t => t.sourceId === selectedSource || t.source === selectedSource)
+      console.log('API返回数据:', result)
+      console.log('API返回数据详情:', JSON.stringify(result, null, 2))
+
+      // 处理不同的数据格式
+      let topicsData: HotTopic[] = []
+      if (result.success) {
+        if (Array.isArray(result.data)) {
+          topicsData = result.data
+        } else if (result.data && (result.data as any).topics && Array.isArray((result.data as any).topics)) {
+          topicsData = (result.data as any).topics
+        } else if (result.data && (result.data as any).data && Array.isArray((result.data as any).data)) {
+          topicsData = (result.data as any).data
         }
+      }
+
+      console.log('解析后的话题数据数量:', topicsData.length)
+      console.log('解析后的话题数据:', topicsData)
+
+      if (topicsData.length > 0) {
+        // 前端筛选数据源
+        let filtered = topicsData
+        if (selectedSource !== 'all') {
+          console.log(`筛选数据源: ${selectedSource}`)
+          filtered = topicsData.filter(t => {
+            const match = t.source === selectedSource
+            console.log(`话题 "${t.title}" 的来源 "${t.source}" 是否匹配 "${selectedSource}": ${match}`)
+            return match
+          })
+          console.log(`数据源筛选后数量:`, filtered.length)
+        }
+
+        if (category !== 'all') {
+          console.log(`筛选分类: ${category}`)
+          filtered = filtered.filter(t => {
+            const match = t.category === category
+            console.log(`话题 "${t.title}" 的分类 "${t.category}" 是否匹配 "${category}": ${match}`)
+            return match
+          })
+          console.log(`分类筛选后数量:`, filtered.length)
+        }
+
+        console.log('筛选后的数据数量:', filtered.length)
+        console.log('筛选后的数据:', filtered)
         setTopics(filtered)
+      } else {
+        console.log('没有话题数据')
+        setTopics([])
       }
     } finally {
       setLoading(false)
+      console.log('=== 加载话题数据完成 ===')
     }
   }
 
@@ -248,12 +292,30 @@ export default function HotTopics() {
     try {
       const sourceIds = selectedSource === 'all' ? undefined : [selectedSource]
       const result = await fetchHotTopics(sourceIds, 30)
+      console.log('NewsNow返回数据:', result)
       if (result.success && result.data?.topics) {
+        console.log('原始话题数据:', result.data.topics)
         // 直接使用获取的数据，不依赖数据库
         let filtered = result.data.topics
         if (selectedSource !== 'all') {
-          filtered = result.data.topics.filter((t: HotTopic) => t.sourceId === selectedSource || t.source === selectedSource)
+          console.log(`筛选数据源: ${selectedSource}`)
+          filtered = result.data.topics.filter((t: HotTopic) => {
+            const match = t.source === selectedSource
+            console.log(`话题 "${t.title}" 的来源 "${t.source}" 是否匹配 "${selectedSource}": ${match}`)
+            return match
+          })
         }
+
+        if (category !== 'all') {
+          console.log(`筛选分类: ${category}`)
+          filtered = filtered.filter((t: HotTopic) => {
+            const match = t.category === category
+            console.log(`话题 "${t.title}" 的分类 "${t.category}" 是否匹配 "${category}": ${match}`)
+            return match
+          })
+        }
+
+        console.log('筛选后的数据:', filtered)
         setTopics(filtered)
       }
     } finally {

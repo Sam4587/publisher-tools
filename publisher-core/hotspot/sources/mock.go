@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"publisher-core/hotspot"
 )
 
@@ -44,9 +43,10 @@ func (s *MockSource) Fetch(ctx context.Context, maxItems int) ([]hotspot.Topic, 
 	}
 
 	now := time.Now()
+	// 使用固定的 ID，避免重复数据
 	topics := []hotspot.Topic{
 		{
-			ID:        uuid.New().String(),
+			ID:        s.id + "-1",
 			Title:     "Test Hotspot 1: This is a mock hotspot topic",
 			Category:  hotspot.CategoryTech,
 			Heat:      95,
@@ -56,7 +56,7 @@ func (s *MockSource) Fetch(ctx context.Context, maxItems int) ([]hotspot.Topic, 
 			UpdatedAt: now,
 		},
 		{
-			ID:        uuid.New().String(),
+			ID:        s.id + "-2",
 			Title:     "Test Hotspot 2: AI Technology Development Trend Analysis",
 			Category:  hotspot.CategoryTech,
 			Heat:      88,
@@ -66,7 +66,7 @@ func (s *MockSource) Fetch(ctx context.Context, maxItems int) ([]hotspot.Topic, 
 			UpdatedAt: now,
 		},
 		{
-			ID:        uuid.New().String(),
+			ID:        s.id + "-3",
 			Title:     "Test Hotspot 3: Technology Innovation Drives the Future",
 			Category:  hotspot.CategoryTech,
 			Heat:      75,

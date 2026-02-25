@@ -9,6 +9,7 @@ import HotTopics from "./pages/HotTopics"
 import VideoTranscription from "./pages/VideoTranscription"
 import ContentGeneration from "./pages/ContentGeneration"
 import Analytics from "./pages/Analytics"
+import HotspotMonitor from "./pages/HotspotMonitor"
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/video-transcription" element={<VideoTranscription />} />
             <Route path="/content-generation" element={<ContentGeneration />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/hotspot-monitor" element={<HotspotMonitor />} />
           </Routes>
         </div>
       </Router>

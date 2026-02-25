@@ -22,6 +22,7 @@ import (
 	"publisher-core/task"
 	"publisher-core/task/handlers"
 
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,6 +49,11 @@ func init() {
 func main() {
 	flag.Parse()
 
+	// 加载 .env 文件
+	if err := godotenv.Load(); err != nil {
+		logrus.Warn("No .env file found, using system environment variables")
+	}
+
 	setupLogger()
 
 	store, err := storage.NewLocalStorage(storageDir, baseURL)
@@ -73,7 +79,9 @@ func main() {
 		taskMgr: taskMgr,
 	}
 
+	// 初始化 AI 服务并从环境变量加载配置
 	aiService := ai.NewServiceWithDefaults()
+	setupAIProviders(aiService)
 	aiAdapter := &AIServiceAdapter{service: aiService}
 
 	server := api.NewServer(taskService, publisherService, storageService, aiAdapter)
@@ -149,6 +157,53 @@ func setupLogger() {
 		logrus.SetLevel(logrus.DebugLevel)
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
+	}
+}
+
+// setupAIProviders 从环境变量加载 AI 提供商配置
+func setupAIProviders(aiService *ai.Service) {
+	// OpenRouter
+	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
+		aiService.RegisterProvider(provider.NewOpenRouterProvider(apiKey))
+		logrus.Info("OpenRouter provider registered")
+	}
+
+	// Google
+	if apiKey := os.Getenv("GOOGLE_API_KEY"); apiKey != "" {
+		aiService.RegisterProvider(provider.NewGoogleProvider(apiKey))
+		logrus.Info("Google provider registered")
+	}
+
+	// Groq
+	if apiKey := os.Getenv("GROQ_API_KEY"); apiKey != "" {
+		aiService.RegisterProvider(provider.NewGroqProvider(apiKey))
+		logrus.Info("Groq provider registered")
+	}
+
+	// DeepSeek
+	if apiKey := os.Getenv("DEEPSEEK_API_KEY"); apiKey != "" {
+		baseURL := os.Getenv("DEEPSEEK_BASE_URL")
+		p := provider.NewDeepSeekProviderWithBaseURL(apiKey, baseURL)
+		aiService.RegisterProvider(p)
+		logrus.Info("DeepSeek provider registered")
+	}
+
+	// Ollama
+	if apiKey := os.Getenv("OLLAMA_API_KEY"); apiKey != "" {
+		baseURL := os.Getenv("OLLAMA_BASE_URL")
+		model := os.Getenv("OLLAMA_MODEL")
+		p, err := provider.NewOllamaProvider(apiKey, baseURL, model)
+		if err != nil {
+			logrus.Warnf("Failed to create Ollama provider: %v", err)
+		} else {
+			aiService.RegisterProvider(p)
+			logrus.Info("Ollama provider registered")
+		}
+	}
+
+	// 设置默认提供商
+	if defaultProvider := os.Getenv("AI_DEFAULT_PROVIDER"); defaultProvider != "" {
+		aiService.SetPrimary(provider.ProviderType(defaultProvider))
 	}
 }
 

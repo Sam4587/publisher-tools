@@ -12,6 +12,7 @@ const (
 	ProviderGoogle     ProviderType = "google"
 	ProviderGroq       ProviderType = "groq"
 	ProviderDeepSeek   ProviderType = "deepseek"
+	ProviderOllama     ProviderType = "ollama"
 )
 
 type Role string

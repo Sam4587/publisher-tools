@@ -1,21 +1,23 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"publisher-core/ai/provider"
 )
 
 type AIServiceAPI interface {
-	Generate(providerName string, opts *provider.GenerateOptions) (*provider.GenerateResult, error)
-	GenerateStream(providerName string, opts *provider.GenerateOptions) (<-chan string, error)
+	Generate(ctx context.Context, providerName string, opts *provider.GenerateOptions) (*provider.GenerateResult, error)
+	GenerateStream(ctx context.Context, providerName string, opts *provider.GenerateOptions) (<-chan string, error)
 	ListProviders() []string
 	ListModels() map[string][]string
-	GenerateContent(prompt string, options map[string]interface{}) (interface{}, error)
-	OptimizeTitle(title string, platform string) (string, error)
-	AnalyzeContent(content string) (interface{}, error)
+	GenerateContent(ctx context.Context, prompt string, options map[string]interface{}) (interface{}, error)
+	OptimizeTitle(ctx context.Context, title string, platform string) (string, error)
+	AnalyzeContent(ctx context.Context, content string) (interface{}, error)
 }
 
 func (s *Server) WithAI(ai AIServiceAPI) *Server {
@@ -82,7 +84,7 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) {
 		Temperature: req.Temperature,
 	}
 
-	result, err := s.ai.Generate("", opts)
+	result, err := s.ai.Generate(r.Context(), "", opts)
 	if err != nil {
 		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
@@ -119,7 +121,7 @@ func (s *Server) aiGenerateWithProvider(w http.ResponseWriter, r *http.Request) 
 		Temperature: req.Temperature,
 	}
 
-	result, err := s.ai.Generate(providerName, opts)
+	result, err := s.ai.Generate(r.Context(), providerName, opts)
 	if err != nil {
 		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
@@ -154,7 +156,7 @@ func (s *Server) aiAnalyzeHotspot(w http.ResponseWriter, r *http.Request) {
 		MaxTokens: 1000,
 	}
 
-	result, err := s.ai.Generate("", opts)
+	result, err := s.ai.Generate(r.Context(), "", opts)
 	if err != nil {
 		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
@@ -196,7 +198,7 @@ func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	messages := []provider.Message{
-		{Role: provider.RoleSystem, Content: "You are a professional content creator skilled in writing engaging articles and social media content."},
+		{Role: provider.RoleSystem, Content: "你是一位专业的中文内容创作者，擅长撰写吸引人的文章和社交媒体内容。请始终使用中文进行创作。"},
 		{Role: provider.RoleUser, Content: buildContentPrompt(req.Topic, req.Platform, req.Style, req.Length)},
 	}
 
@@ -205,7 +207,7 @@ func (s *Server) aiContentGenerate(w http.ResponseWriter, r *http.Request) {
 		MaxTokens: 2000,
 	}
 
-	result, err := s.ai.Generate("", opts)
+	result, err := s.ai.Generate(r.Context(), "", opts)
 	if err != nil {
 		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
@@ -243,7 +245,7 @@ func (s *Server) aiContentRewrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	messages := []provider.Message{
-		{Role: provider.RoleSystem, Content: "You are a professional content creator skilled in rewriting content for different platforms and styles."},
+		{Role: provider.RoleSystem, Content: "你是一位专业的中文内容创作者，擅长为不同平台和风格改写内容。请始终使用中文进行创作。"},
 		{Role: provider.RoleUser, Content: buildRewritePrompt(req.Content, req.Style, req.Platform)},
 	}
 
@@ -252,7 +254,7 @@ func (s *Server) aiContentRewrite(w http.ResponseWriter, r *http.Request) {
 		MaxTokens: 2000,
 	}
 
-	result, err := s.ai.Generate("", opts)
+	result, err := s.ai.Generate(r.Context(), "", opts)
 	if err != nil {
 		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
@@ -290,7 +292,7 @@ func (s *Server) aiContentAudit(w http.ResponseWriter, r *http.Request) {
 		MaxTokens: 500,
 	}
 
-	result, err := s.ai.Generate("", opts)
+	result, err := s.ai.Generate(r.Context(), "", opts)
 	if err != nil {
 		jsonError(w, "AI_ERROR", err.Error(), http.StatusInternalServerError)
 		return
@@ -320,28 +322,28 @@ Output in JSON format.`
 }
 
 func buildContentPrompt(topic, platform, style string, length int) string {
-	return `Generate content based on the following requirements:
+	return `请根据以下要求生成内容（请用中文输出）：
 
-Topic: ` + topic + `
-Platform: ` + platform + `
-Style: ` + style + `
-Word count: Around ` + string(rune(length)) + ` words
+主题：` + topic + `
+平台：` + platform + `
+风格：` + style + `
+字数：约 ` + strconv.Itoa(length) + ` 字
 
-Generate content suitable for the platform, including title and body.`
+请生成适合该平台的内容，包括标题和正文。输出语言必须为中文。`
 }
 
 func buildRewritePrompt(content, style, platform string) string {
-	return `Rewrite the following content in ` + style + ` style, suitable for ` + platform + ` platform:
+	return `请将以下内容改写为 ` + style + ` 风格，适合 ` + platform + ` 平台（请用中文输出）：
 
-Original:
+原文：
 ` + content + `
 
-Requirements:
-1. Keep the core meaning unchanged
-2. Change expression and language style
-3. Comply with platform content guidelines
+要求：
+1. 保持核心含义不变
+2. 改变表达方式和语言风格
+3. 符合平台内容规范
 
-Output the rewritten content directly.`
+请直接输出改写后的内容，语言必须为中文。`
 }
 
 func buildAuditPrompt(content string) string {

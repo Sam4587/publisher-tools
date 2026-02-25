@@ -35,16 +35,16 @@ type TaskManagerAPI interface {
 type PublisherAPI interface {
 	GetPlatforms() []string
 	GetPlatformInfo(platform string) (interface{}, error)
-	Login(platform string) (interface{}, error)
-	CheckLogin(platform string) (interface{}, error)
-	Logout(platform string) (interface{}, error)
+	Login(ctx context.Context, platform string) (interface{}, error)
+	CheckLogin(ctx context.Context, platform string) (interface{}, error)
+	Logout(ctx context.Context, platform string) (interface{}, error)
 }
 
 type StorageAPI interface {
-	Upload(file []byte, path string) (string, error)
-	Download(path string) ([]byte, error)
-	List(prefix string) ([]string, error)
-	Delete(path string) error
+	Upload(ctx context.Context, file []byte, path string) (string, error)
+	Download(ctx context.Context, path string) ([]byte, error)
+	List(ctx context.Context, prefix string) ([]string, error)
+	Delete(ctx context.Context, path string) error
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -102,6 +102,9 @@ func (s *Server) setupRoutes() {
 	aiRouter.HandleFunc("/generate", s.generateContent).Methods("POST")
 	aiRouter.HandleFunc("/optimize-title", s.optimizeTitle).Methods("POST")
 	aiRouter.HandleFunc("/analyze", s.analyzeContent).Methods("POST")
+
+	// 注册 AI 内容生成相关路由
+	s.setupAIRoutes()
 
 	cacheRouter := apiRouter.PathPrefix("/cache").Subrouter()
 	cacheRouter.HandleFunc("/stats", s.getCacheStats).Methods("GET")
@@ -251,7 +254,7 @@ func (s *Server) loginPlatform(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	platform := vars["platform"]
 
-	result, err := s.publisher.Login(platform)
+	result, err := s.publisher.Login(r.Context(), platform)
 	if err != nil {
 		jsonError(w, "LOGIN_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -264,7 +267,7 @@ func (s *Server) checkLogin(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	platform := vars["platform"]
 
-	result, err := s.publisher.CheckLogin(platform)
+	result, err := s.publisher.CheckLogin(r.Context(), platform)
 	if err != nil {
 		jsonError(w, "CHECK_LOGIN_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -277,7 +280,7 @@ func (s *Server) logoutPlatform(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	platform := vars["platform"]
 
-	result, err := s.publisher.Logout(platform)
+	result, err := s.publisher.Logout(r.Context(), platform)
 	if err != nil {
 		jsonError(w, "LOGOUT_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -297,7 +300,7 @@ func (s *Server) generateContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.ai.GenerateContent(req.Prompt, req.Options)
+	result, err := s.ai.GenerateContent(r.Context(), req.Prompt, req.Options)
 	if err != nil {
 		jsonError(w, "GENERATE_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -317,7 +320,7 @@ func (s *Server) optimizeTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.ai.OptimizeTitle(req.Title, req.Platform)
+	result, err := s.ai.OptimizeTitle(r.Context(), req.Title, req.Platform)
 	if err != nil {
 		jsonError(w, "OPTIMIZE_FAILED", err.Error(), http.StatusInternalServerError)
 		return
@@ -338,7 +341,7 @@ func (s *Server) analyzeContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.ai.AnalyzeContent(req.Content)
+	result, err := s.ai.AnalyzeContent(r.Context(), req.Content)
 	if err != nil {
 		jsonError(w, "ANALYZE_FAILED", err.Error(), http.StatusInternalServerError)
 		return

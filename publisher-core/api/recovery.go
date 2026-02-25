@@ -112,7 +112,7 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 				w.Header().Set("X-Timeout", "true")
 				
 				// 尝试写入超时响应
-				if !w.Header().Get("Content-Type") != "" {
+				if w.Header().Get("Content-Type") != "" {
 					// 如果已经设置了Content-Type,说明已经开始响应
 					// 此时不能写入新响应
 					logrus.Warnf("Request timeout but response already started")

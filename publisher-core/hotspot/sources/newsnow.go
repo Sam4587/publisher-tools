@@ -76,6 +76,10 @@ func (s *NewsNowSource) Name() string {
 	return s.name
 }
 
+func (s *NewsNowSource) DisplayName() string {
+	return s.name
+}
+
 func (s *NewsNowSource) IsEnabled() bool {
 	return s.enabled
 }
@@ -102,21 +106,30 @@ func (s *NewsNowSource) Fetch(ctx context.Context, maxItems int) ([]hotspot.Topi
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetch failed: %w", err)
+		logrus.Warnf("[%s] API request failed: %v", s.id, err)
+		return s.getFallbackTopics(maxItems), nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		logrus.Warnf("[%s] API returned status %d", s.id, resp.StatusCode)
+		return s.getFallbackTopics(maxItems), nil
 	}
 
 	var result newsNowResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
+		logrus.Warnf("[%s] Failed to parse response: %v", s.id, err)
+		return s.getFallbackTopics(maxItems), nil
 	}
 
 	if result.Code != 200 {
-		return nil, fmt.Errorf("API error: %s", result.Msg)
+		logrus.Warnf("[%s] API error: %s", s.id, result.Msg)
+		return s.getFallbackTopics(maxItems), nil
+	}
+
+	if len(result.Data) == 0 {
+		logrus.Warnf("[%s] No data returned from API", s.id)
+		return s.getFallbackTopics(maxItems), nil
 	}
 
 	var topics []hotspot.Topic
@@ -128,8 +141,49 @@ func (s *NewsNowSource) Fetch(ctx context.Context, maxItems int) ([]hotspot.Topi
 		topics = append(topics, topic)
 	}
 
-	logrus.Infof("fetched %d topics from %s", len(topics), s.id)
+	logrus.Infof("[%s] fetched %d topics from API", s.id, len(topics))
 	return topics, nil
+}
+
+func (s *NewsNowSource) getFallbackTopics(maxItems int) []hotspot.Topic {
+	now := time.Now()
+	fallbackTopics := map[string][]hotspot.Topic{
+		"weibo": {
+			{ID: "weibo-fallback-1", Title: "微博热搜暂不可用", Source: "weibo", Heat: 100000, SourceURL: "https://s.weibo.com", CreatedAt: now, UpdatedAt: now},
+		},
+		"douyin": {
+			{ID: "douyin-fallback-1", Title: "抖音热点暂不可用", Source: "douyin", Heat: 100000, SourceURL: "https://www.douyin.com", CreatedAt: now, UpdatedAt: now},
+		},
+		"zhihu": {
+			{ID: "zhihu-fallback-1", Title: "知乎热榜暂不可用", Source: "zhihu", Heat: 100000, SourceURL: "https://www.zhihu.com", CreatedAt: now, UpdatedAt: now},
+		},
+		"toutiao": {
+			{ID: "toutiao-fallback-1", Title: "今日头条热点暂不可用", Source: "toutiao", Heat: 100000, SourceURL: "https://www.toutiao.com", CreatedAt: now, UpdatedAt: now},
+		},
+		"netease": {
+			{ID: "netease-fallback-1", Title: "网易新闻暂不可用", Source: "netease", Heat: 100000, SourceURL: "https://news.163.com", CreatedAt: now, UpdatedAt: now},
+		},
+		"sina": {
+			{ID: "sina-fallback-1", Title: "新浪新闻暂不可用", Source: "sina", Heat: 100000, SourceURL: "https://news.sina.com.cn", CreatedAt: now, UpdatedAt: now},
+		},
+		"qq": {
+			{ID: "qq-fallback-1", Title: "腾讯新闻暂不可用", Source: "qq", Heat: 100000, SourceURL: "https://news.qq.com", CreatedAt: now, UpdatedAt: now},
+		},
+	}
+
+	topics, ok := fallbackTopics[s.sourceID]
+	if !ok {
+		topics = []hotspot.Topic{
+			{ID: fmt.Sprintf("%s-fallback-1", s.sourceID), Title: fmt.Sprintf("%s 热点数据暂不可用", s.name), Source: s.sourceID, Heat: 100000, SourceURL: "", CreatedAt: now, UpdatedAt: now},
+		}
+	}
+
+	if maxItems > 0 && len(topics) > maxItems {
+		topics = topics[:maxItems]
+	}
+
+	logrus.Warnf("[%s] using fallback data", s.sourceID)
+	return topics
 }
 
 func (s *NewsNowSource) convertItem(item newsNowItem, rank int) hotspot.Topic {
@@ -241,34 +295,15 @@ func GetAllSourceIDs() []string {
 }
 
 func CreateAllSources() []hotspot.SourceInterface {
+	// 使用真实数据源和 NewsNow API 混合模式
 	return []hotspot.SourceInterface{
-		NewWeiboSource(),
-		NewDouyinSource(),
-		NewZhihuSource(),
-		NewBaiduSource(),
-		NewRSSSource(RSSConfig{
-			ID:      "toutiao",
-			Name:    "今日头条",
-			FeedURL: "https://www.toutiao.com/rss",
-			Enabled: true,
-		}),
-		NewRSSSource(RSSConfig{
-			ID:      "netease",
-			Name:    "网易新闻",
-			FeedURL: "https://news.163.com/special/0001386F/rss_news.xml",
-			Enabled: true,
-		}),
-		NewRSSSource(RSSConfig{
-			ID:      "sina",
-			Name:    "新浪新闻",
-			FeedURL: "https://news.sina.com.cn/sroll/news.d.html",
-			Enabled: true,
-		}),
-		NewRSSSource(RSSConfig{
-			ID:      "qq",
-			Name:    "腾讯新闻",
-			FeedURL: "https://news.qq.com/rss/newsgn.xml",
-			Enabled: true,
-		}),
+		NewBaiduSource(),           // 百度热搜 - 使用 HTML 解析获取真实数据
+		NewNewsNowSource("weibo"),  // 微博热搜 - 使用 NewsNow API
+		NewNewsNowSource("douyin"), // 抖音热点 - 使用 NewsNow API
+		NewNewsNowSource("zhihu"),  // 知乎热榜 - 使用 NewsNow API
+		NewNewsNowSource("toutiao"),// 今日头条 - 使用 NewsNow API
+		NewNewsNowSource("netease"),// 网易新闻 - 使用 NewsNow API
+		NewNewsNowSource("sina"),   // 新浪新闻 - 使用 NewsNow API
+		NewNewsNowSource("qq"),     // 腾讯新闻 - 使用 NewsNow API
 	}
 }

@@ -3,6 +3,11 @@ chcp 65001 >nul
 title Publisher Tools - Start All Services
 color 0A
 
+REM 禁用WSL检测,防止启动时出现WSL更新弹窗
+set NODE_OPTIONS=
+set ELECTRON_NO_ATTACH_CONSOLE=1
+set npm_config_use_wsl=false
+
 echo.
 echo ========================================
 echo   Publisher Tools - Starting All Services

@@ -86,6 +86,13 @@ func (s *Service) loadConfig(path string) error {
 		case provider.ProviderDeepSeek:
 			p := provider.NewDeepSeekProviderWithBaseURL(pc.APIKey, pc.BaseURL)
 			s.RegisterProvider(p)
+		case provider.ProviderOllama:
+			p, err := provider.NewOllamaProvider(pc.APIKey, pc.BaseURL, pc.Model)
+			if err != nil {
+				logrus.Warnf("Failed to create Ollama provider: %v", err)
+			} else {
+				s.RegisterProvider(p)
+			}
 		}
 	}
 

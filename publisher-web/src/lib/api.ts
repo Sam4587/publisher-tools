@@ -12,16 +12,37 @@ interface PlatformsResponse {
 
 // 通用请求方法
 async function request<T>(url: string, options?: RequestInit): Promise<APIResponse<T>> {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
 
-  const data = await response.json()
-  return data as APIResponse<T>
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      signal: controller.signal,
+      ...options,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data as APIResponse<T>
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('请求超时，请稍后重试')
+      }
+      throw error
+    }
+    throw new Error('网络请求失败')
+  }
 }
 
 // 获取平台列表
@@ -113,19 +134,58 @@ export interface HotTopicsParams {
 }
 
 // 获取热点列表
-export async function getHotTopics(params: HotTopicsParams = {}): Promise<{ success: boolean; data: HotTopic[]; pagination: Pagination }> {
-  const query = new URLSearchParams()
-  if (params.page) query.set('page', params.page.toString())
-  if (params.limit) query.set('limit', params.limit.toString())
-  if (params.category) query.set('category', params.category)
-  if (params.search) query.set('search', params.search)
-  if (params.minHeat !== undefined) query.set('minHeat', params.minHeat.toString())
-  if (params.maxHeat !== undefined) query.set('maxHeat', params.maxHeat.toString())
-  if (params.sortBy) query.set('sortBy', params.sortBy)
-  if (params.sortOrder) query.set('sortOrder', params.sortOrder)
+export async function getHotTopics(params: HotTopicsParams = {}): Promise<{ success: boolean; data: HotTopic[]; pagination: Pagination; message?: string }> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
 
-  const response = await fetch(`${HOT_API_BASE}?${query}`)
-  return response.json()
+  try {
+    const query = new URLSearchParams()
+    if (params.page) query.set('page', params.page.toString())
+    if (params.limit) query.set('limit', params.limit.toString())
+    if (params.category) query.set('category', params.category)
+    if (params.search) query.set('search', params.search)
+    if (params.minHeat !== undefined) query.set('minHeat', params.minHeat.toString())
+    if (params.maxHeat !== undefined) query.set('maxHeat', params.maxHeat.toString())
+    if (params.sortBy) query.set('sortBy', params.sortBy)
+    if (params.sortOrder) query.set('sortOrder', params.sortOrder)
+
+    const response = await fetch(`${HOT_API_BASE}?${query}`, {
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return {
+          success: false,
+          data: [],
+          pagination: { page: 1, limit: 20, total: 0, pages: 0, hasMore: false },
+          message: '请求超时，请稍后重试'
+        }
+      }
+      return {
+        success: false,
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, pages: 0, hasMore: false },
+        message: error.message
+      }
+    }
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, pages: 0, hasMore: false },
+      message: '网络请求失败'
+    }
+  }
 }
 
 // 获取热点详情
