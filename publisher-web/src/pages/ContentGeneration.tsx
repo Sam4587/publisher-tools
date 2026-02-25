@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Sparkles, Loader2, Copy, RefreshCw, CheckCircle, Upload, Send } from 'lucide-react'
+import { Sparkles, Loader2, Copy, RefreshCw, CheckCircle, Upload, Send, Wand2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { aiContentGenerate, aiContentRewrite, publish } from '@/lib/api'
+import { aiContentGenerate, aiContentRewrite, publish, aiOptimizeTitle } from '@/lib/api'
 import type { Platform, ContentType } from '@/types/api'
 
 const styles = [
@@ -30,6 +30,7 @@ export default function ContentGeneration() {
   const location = useLocation()
   const navigate = useNavigate()
   const [topic, setTopic] = useState('')
+  const [originalTopic, setOriginalTopic] = useState('')
   const [style, setStyle] = useState('轻松幽默')
   const [platform, setPlatform] = useState('general')
   const [length, setLength] = useState(500)
@@ -38,13 +39,54 @@ export default function ContentGeneration() {
   const [copied, setCopied] = useState(false)
   const [rewriting, setRewriting] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [optimizingTitle, setOptimizingTitle] = useState(false)
+  const [optimizedTitles, setOptimizedTitles] = useState<string[]>([])
+  const [showTitleOptions, setShowTitleOptions] = useState(false)
+  const [hotspotMetadata, setHotspotMetadata] = useState<{ source?: string; keywords?: string[]; category?: string }>({})
 
   // 接收来自热点页面的参数
   useEffect(() => {
     if (location.state) {
-      const state = location.state as { topic?: string; source?: string }
+      const state = location.state as { topic?: string; source?: string; keywords?: string[]; category?: string }
+        // 保存热点元数据用于标题优化
+        setHotspotMetadata({
+          source: state.source,
+          keywords: state.keywords,
+          category: state.category
+        })
       if (state.topic) {
         setTopic(state.topic)
+          setOriginalTopic(state.topic)
+      }
+      // 如果有来源，可以根据来源自动设置平台
+      if (state.source) {
+        const platformMap: Record<string, string> = {
+          'weibo': 'weibo',
+          'douyin': 'douyin',
+          'toutiao': 'toutiao',
+          'xiaohongshu': 'xiaohongshu',
+          'zhihu': 'weibo', // 知乎内容适合微博发布
+          'bilibili': 'xiaohongshu', // B站内容适合小红书
+        }
+        const matchedPlatform = platformMap[state.source]
+        if (matchedPlatform) {
+          setPlatform(matchedPlatform)
+        }
+      }
+      // 如果有分类，可以根据分类自动设置风格
+      if (state.category) {
+        const styleMap: Record<string, string> = {
+          '娱乐': '轻松幽默',
+          '科技': '理性分析',
+          '财经': '正式专业',
+          '体育': '轻松幽默',
+          '社会': '理性分析',
+          '新闻': '正式专业',
+        }
+        const matchedStyle = styleMap[state.category]
+        if (matchedStyle) {
+          setStyle(matchedStyle)
+        }
       }
     }
   }, [location.state])
@@ -169,6 +211,46 @@ export default function ContentGeneration() {
     }
     return platformMap[platformCode] || platformCode
   }
+
+    // AI优化标题为爆款标题
+    const handleOptimizeTitle = async () => {
+      if (!topic.trim()) {
+        alert('请先输入主题')
+        return
+      }
+
+      setOptimizingTitle(true)
+      try {
+        const response = await aiOptimizeTitle({
+          originalTitle: topic,
+          platform: platform,
+          category: hotspotMetadata.category,
+          keywords: hotspotMetadata.keywords
+        })
+
+        if (response.success && response.data) {
+          setOptimizedTitles(response.data.optimizedTitles)
+          setShowTitleOptions(true)
+          // 如果只有一个优化标题，直接使用
+          if (response.data.optimizedTitles.length === 1) {
+            setTopic(response.data.optimizedTitles[0])
+          }
+        } else {
+          alert(response.error || '标题优化失败')
+        }
+      } catch (error) {
+        console.error('Optimize title failed:', error)
+        alert('标题优化失败，请重试')
+      } finally {
+        setOptimizingTitle(false)
+      }
+    }
+
+    // 选择优化后的标题
+    const handleSelectOptimizedTitle = (optimizedTitle: string) => {
+      setTopic(optimizedTitle)
+      setShowTitleOptions(false)
+    }
 
   return (
     <div className="container mx-auto px-4 py-8">

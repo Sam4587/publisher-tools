@@ -331,11 +331,13 @@ export default function HotTopics() {
 
   // 生成内容
   function handleGenerate(topic: HotTopic) {
-    navigate('/content-generation', { 
-      state: { 
+    navigate('/content-generation', {
+      state: {
         topic: topic.title,
-        source: topic.source 
-      } 
+        source: topic.source,
+        keywords: topic.keywords,
+        category: topic.category
+      }
     })
   }
 

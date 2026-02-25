@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RefreshCw, TrendingUp, Sparkles, Video, Flame, AlertCircle } from 'lucide-react'
+import { RefreshCw, TrendingUp, Sparkles, Video, Flame, AlertCircle, Wand2, ArrowRight } from 'lucide-react'
 import HotspotTrendChart from '@/components/HotspotTrendChart'
 import RankTimelineChart from '@/components/RankTimelineChart'
 import EnhancedAIAnalysisPanel from '@/components/EnhancedAIAnalysisPanel'
@@ -55,6 +56,7 @@ const platformDisplayNames: Record<string, string> = {
 }
 
 export default function HotspotMonitor() {
+  const navigate = useNavigate()
   const [topics, setTopics] = useState<HotTopic[]>([])
   const [filteredTopics, setFilteredTopics] = useState<HotTopic[]>([])
   const [loading, setLoading] = useState(true)
@@ -223,6 +225,33 @@ export default function HotspotMonitor() {
     }
   }
 
+  // 生成内容
+  const handleGenerateContent = (topic?: HotTopic) => {
+    const targetTopic = topic || (selectedTopics.length === 1 ? selectedTopics[0] : null)
+    if (!targetTopic) {
+      alert('请先选择一个热点话题')
+      return
+    }
+    navigate('/content-generation', {
+      state: {
+        topic: targetTopic.title,
+        source: targetTopic.source,
+        keywords: targetTopic.keywords,
+        category: targetTopic.category
+      }
+    })
+  }
+
+  // 批量生成内容
+  const handleBatchGenerate = () => {
+    if (selectedTopics.length === 0) {
+      alert('请至少选择一个热点话题')
+      return
+    }
+    // 使用第一个话题跳转到内容生成页面，其他话题可以在页面内切换
+    handleGenerateContent(selectedTopics[0])
+  }
+
   // 生成模拟趋势数据
   const getTrendData = (): TrendDataPoint[] => {
     const data: TrendDataPoint[] = []
@@ -289,6 +318,14 @@ export default function HotspotMonitor() {
           >
             <Sparkles className="h-4 w-4 mr-2" />
             AI 分析 ({selectedTopics.length})
+          </Button>
+          <Button
+            onClick={handleBatchGenerate}
+            disabled={selectedTopics.length === 0}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            生成内容
           </Button>
         </div>
       </div>
@@ -447,11 +484,25 @@ export default function HotspotMonitor() {
                           )}
                         </div>
                       </div>
-                      {selectedTopics.find(t => t._id === topic._id) && (
-                        <Badge variant="default" className="flex-shrink-0">
-                          已选择
-                        </Badge>
-                      )}
+                      <div className="flex flex-col items-end gap-2">
+                        {selectedTopics.find(t => t._id === topic._id) && (
+                          <Badge variant="default" className="flex-shrink-0">
+                            已选择
+                          </Badge>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleGenerateContent(topic)
+                          }}
+                          className="text-xs"
+                        >
+                          <Wand2 className="h-3 w-3 mr-1" />
+                          生成内容
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

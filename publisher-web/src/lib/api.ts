@@ -531,3 +531,29 @@ export async function aiContentAudit(req: ContentAuditRequest): Promise<APIRespo
 }
 
 
+
+
+// 标题优化请求
+export interface TitleOptimizeRequest {
+  originalTitle: string
+  platform?: string
+  category?: string
+  keywords?: string[]
+}
+
+// 标题优化结果
+export interface TitleOptimizeResult {
+  optimizedTitles: string[]
+  recommendedTitle: string
+  reason: string
+  provider: string
+  model: string
+}
+
+// AI 优化标题为爆款标题
+export async function aiOptimizeTitle(req: TitleOptimizeRequest): Promise<APIResponse<TitleOptimizeResult>> {
+  return request<TitleOptimizeResult>(`${API_BASE}/ai/title/optimize`, {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
